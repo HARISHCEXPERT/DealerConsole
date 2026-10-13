@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dealer Console — Login</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#12161f;--line:#1e2530;--fg:#e6edf3;--muted:#8b98a9;--brand:#4a9eff;--go:#3fb950;--crit:#e0524d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:40px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+  .logo{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .logo-mark{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--brand),#2d7de0);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px}
+  h1{font-size:20px;font-weight:700}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+  label{display:block;font-size:12px;color:var(--muted);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+  input{width:100%;background:#0b0e14;border:1px solid var(--line);border-radius:8px;padding:12px 14px;color:var(--fg);font-size:15px;outline:none}
+  input:focus{border-color:var(--brand)}
+  button{width:100%;margin-top:24px;background:var(--brand);border:none;border-radius:8px;padding:13px;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+  button:hover{background:#3d8ae0}
+  button:disabled{opacity:.6;cursor:default}
+  .err{color:var(--crit);font-size:13px;margin-top:14px;min-height:18px;text-align:center}
+  .foot{color:var(--muted);font-size:11px;text-align:center;margin-top:24px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo"><div class="logo-mark">DC</div><div><h1>Dealer Console</h1></div></div>
+    <div class="sub">Shree Balaji Motors · Business Management</div>
+    <label>Username</label>
+    <input id="user" type="text" autocomplete="username" placeholder="admin" autofocus>
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••">
+    <button id="btn">Login</button>
+    <div class="err" id="err"></div>
+    <div class="foot">🔒 Data aapke system pe · offline · private</div>
+  </div>
+<script>
+  const btn=document.getElementById('btn'), err=document.getElementById('err');
+  async function doLogin(){
+    const user=document.getElementById('user').value.trim();
+    const pass=document.getElementById('pass').value;
+    if(!user||!pass){err.textContent='Username aur password daalo';return;}
+    btn.disabled=true;btn.textContent='Checking…';err.textContent='';
+    try{
+      const r=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user,pass})});
+      const j=await r.json();
+      if(j.ok){ location.href='/'; }
+      else { err.textContent=j.error||'Login fail'; btn.disabled=false;btn.textContent='Login'; }
+    }catch(e){ err.textContent='Server error'; btn.disabled=false;btn.textContent='Login'; }
+  }
+  btn.addEventListener('click',doLogin);
+  document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  document.getElementById('user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pass').focus();});
+</script>
+</body>
+</html>

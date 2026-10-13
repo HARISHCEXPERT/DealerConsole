@@ -1,0 +1,6 @@
+2026/10/13-13:51:30.321 55dc Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Local Storage\leveldb/MANIFEST-000001
+2026/10/13-13:51:30.329 55dc Recovering log #60
+2026/10/13-13:51:30.332 55dc Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Local Storage\leveldb/000060.log 
+2026/10/13-13:52:30.359 55dc Level-0 table #65: started
+2026/10/13-13:52:30.410 55dc Level-0 table #65: 18069 bytes OK
+2026/10/13-13:52:30.420 55dc Delete type=0 #60

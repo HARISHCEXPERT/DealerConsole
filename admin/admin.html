@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>License Admin</title>
+<!-- Sirf tumhare liye. Ye file dealers ko mat dena (dena bhi pade to bina admin login kuch nahi khulta). Double-click se khol lo. -->
+<script src="/admin/supabase.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--brand:#e11d2a;--ok:#15803d;--okb:#dcfce7;--warn:#a16207;--warnb:#fef9c3;--bad:#b91c1c;--badb:#fee2e2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:#111827;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;flex:1}header button{background:#374151;color:#fff;border:0;border-radius:7px;padding:7px 12px;cursor:pointer}
+main{max-width:1250px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.center{max-width:380px;margin:60px auto}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:inherit;background:#fff;color:inherit}
+label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
+.btn{border:0;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer;background:var(--brand);color:#fff}
+.btn.sec{background:#e5e7eb;color:#111}.btn.sm{padding:5px 9px;font-size:12px;font-weight:500}
+.btn:disabled{opacity:.5;cursor:wait}
+.err{color:var(--bad);min-height:18px;font-size:13px;margin-top:8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.stat b{font-size:22px;display:block}.stat span{color:var(--mute);font-size:12px}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}.bar input{max-width:280px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 14px;cursor:pointer}.tabs button.on{background:#111827;color:#fff}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:nowrap}th{color:var(--mute);font-weight:600;font-size:12px;background:#fafafa}
+td small{color:var(--mute);display:block}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:12px;font-weight:600}
+.p-ok{background:var(--okb);color:var(--ok)}.p-warn{background:var(--warnb);color:var(--warn)}.p-bad{background:var(--badb);color:var(--bad)}.p-mute{background:#f3f4f6;color:var(--mute)}
+.acts{display:flex;gap:4px;flex-wrap:wrap}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;z-index:9}
+.ov .card{max-width:560px;width:100%}.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>🔑 Dealer Console — License Admin</h1><span id="who"></span><button id="outBtn" class="hide">Logout</button></header>
+<main id="app"></main>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const DAY = 86400e3;
+const dmy = (d) => d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '—';
+const dmyt = (d) => d ? new Date(d).toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false }).slice(0, 17) : '—';
+const ago = (d) => { if (!d) return 'kabhi nahi'; const m = (Date.now() - new Date(d)) / 60e3; return m < 60 ? Math.round(m) + ' min pehle' : m < 1440 ? Math.round(m / 60) + ' ghante pehle' : Math.round(m / 1440) + ' din pehle'; };
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+let sb = null, DEALERS = [], TAB = 'dealers';
+
+// ---------- password hash (Edge Function isi tarah check karta hai) ----------
+const b64 = (u) => btoa(String.fromCharCode(...u));
+async function hashPass(pw) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), it = 100000;
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: it }, base, 256));
+  return `pbkdf2$${it}$${b64(salt)}$${b64(bits)}`;
+}
+function genPass() { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; return Array.from(crypto.getRandomValues(new Uint8Array(10)), (x) => a[x % a.length]).join(''); }
+
+// ---------- setup / login ----------
+function setupView(msg = '') {
+  $('#app').innerHTML = `<div class="card center"><h2 style="margin-top:0">Supabase jodo</h2>
+    <p style="color:var(--mute)">Ek hi baar. Project Settings → API Keys se.</p>
+    <label>Project URL</label><input id="sUrl" value="${esc(lsGet('lic_url') || 'https://stbjaesjtzmubopznsxg.supabase.co')}">
+    <label>anon public key (eyJ…)</label><input id="sKey" value="${esc(lsGet('lic_key') || '')}">
+    <div class="err">${esc(msg)}</div><button class="btn" id="sGo" style="width:100%">Aage</button></div>`;
+  $('#sGo').onclick = () => { lsSet('lic_url', $('#sUrl').value.trim()); lsSet('lic_key', $('#sKey').value.trim()); boot(); };
+}
+function loginView(msg = '') {
+  $('#app').innerHTML = `<div class="card center"><h2 style="margin-top:0">Admin login</h2>
+    <label>Email</label><input id="lEm" type="email" autocomplete="username">
+    <label>Password</label><input id="lPw" type="password" autocomplete="current-password">
+    <div class="err" id="lErr">${esc(msg)}</div><button class="btn" id="lGo" style="width:100%">Login</button>
+    <p style="margin:14px 0 0;font-size:12px"><a href="#" id="lCfg">Supabase URL / key badlo</a></p></div>`;
+  const go = async () => {
+    $('#lGo').disabled = true;
+    const { error } = await sb.auth.signInWithPassword({ email: $('#lEm').value.trim(), password: $('#lPw').value });
+    if (error) { $('#lErr').textContent = error.message; $('#lGo').disabled = false; return; }
+    boot();
+  };
+  $('#lGo').onclick = go; $('#lPw').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+  $('#lCfg').onclick = (e) => { e.preventDefault(); setupView(); };
+}
+async function boot() {
+  const C = window.DC_ADMIN_CFG || {};
+  const url = C.url || lsGet('lic_url'), key = C.key || lsGet('lic_key');
+  if (!url || !key) return setupView();
+  try { sb = supabase.createClient(url, key); } catch (e) { return setupView(e.message); }
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return loginView();
+  const { data: adm, error } = await sb.from('admins').select('email');
+  if (error) return loginView('DB error: ' + error.message + ' (schema.sql chala?)');
+  if (!adm?.length) { await sb.auth.signOut(); return loginView(session.user.email + ' admin nahi hai — SQL me admins table me daalo'); }
+  $('#who').textContent = session.user.email; $('#outBtn').classList.remove('hide');
+  $('#outBtn').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  mainView();
+}
+
+// ---------- main ----------
+function daysLeft(d) { return Math.ceil((new Date(d.expires_at) - Date.now()) / DAY); }
+function statePill(d) {
+  if (d.status !== 'active') return '<span class="pill p-mute">Roka hua</span>';
+  const n = daysLeft(d);
+  if (n <= 0) return `<span class="pill p-bad">Khatam (${-n} din)</span>`;
+  if (n <= 7) return `<span class="pill p-warn">${n} din bache</span>`;
+  return `<span class="pill p-ok">${n} din bache</span>`;
+}
+async function mainView() {
+  $('#app').innerHTML = `<div class="stats" id="stats"></div>
+    <div class="tabs"><button data-t="dealers">Dealers</button><button data-t="log">Log</button></div>
+    <div class="card" id="body"></div>`;
+  $('.tabs').onclick = (e) => { const t = e.target.dataset.t; if (t) { TAB = t; render(); } };
+  await loadDealers(); render();
+}
+async function loadDealers() {
+  const { data, error } = await sb.from('dealers').select('*').order('expires_at');
+  if (error) { alert(error.message); DEALERS = []; } else DEALERS = data;
+  const act = DEALERS.filter((d) => d.status === 'active');
+  $('#stats').innerHTML = [
+    ['Kul dealers', DEALERS.length],
+    ['Chalu', act.filter((d) => daysLeft(d) > 0).length],
+    ['7 din me khatam', act.filter((d) => daysLeft(d) > 0 && daysLeft(d) <= 7).length],
+    ['Khatam', act.filter((d) => daysLeft(d) <= 0).length],
+    ['Roke hue', DEALERS.length - act.length],
+  ].map(([l, n]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('');
+}
+function render() {
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === TAB));
+  if (TAB === 'log') return renderLog();
+  $('#body').innerHTML = `<div class="bar"><input id="q" placeholder="Code / naam / city / ID se dhundo"><span style="flex:1"></span><button class="btn" id="addBtn">+ Naya dealer</button></div>
+    <div class="tw"><table><thead><tr><th>Dealer</th><th>License ID</th><th>Plan</th><th>Kab tak</th><th>Haal</th><th>PC</th><th>Aakhri baar online</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>`;
+  $('#addBtn').onclick = () => editDealer(null);
+  $('#q').oninput = drawRows; drawRows();
+}
+function drawRows() {
+  const q = ($('#q')?.value || '').toLowerCase();
+  const list = DEALERS.filter((d) => !q || [d.dealer_code, d.name, d.city, d.login_id, d.phone].join(' ').toLowerCase().includes(q));
+  $('#rows').innerHTML = list.map((d) => `<tr>
+    <td><b>${esc(d.name)}</b><small>${esc(d.dealer_code)}${d.city ? ' · ' + esc(d.city) : ''}${d.phone ? ' · ' + esc(d.phone) : ''}</small></td>
+    <td>${esc(d.login_id)}</td><td>${esc(d.plan)}</td><td>${dmy(d.expires_at)}</td><td>${statePill(d)}</td>
+    <td>${d.device_id ? esc(d.device_name || 'bandha') + `<small>${dmy(d.device_bound_at)} se</small>` : '<span class="pill p-mute">koi bhi pehla PC</span>'}</td>
+    <td>${ago(d.last_seen)}<small>${d.app_version ? 'v' + esc(d.app_version) : ''}</small></td>
+    <td><div class="acts">
+      <button class="btn sm" data-a="ext30" data-id="${d.id}">+30 din</button>
+      <button class="btn sm" data-a="ext365" data-id="${d.id}">+1 saal</button>
+      <button class="btn sm sec" data-a="edit" data-id="${d.id}">Badlo</button>
+      <button class="btn sm sec" data-a="toggle" data-id="${d.id}">${d.status === 'active' ? 'Roko' : 'Chalu karo'}</button>
+      ${d.device_id ? `<button class="btn sm sec" data-a="reset" data-id="${d.id}">PC reset</button>` : ''}
+    </div></td></tr>`).join('') || '<tr><td colspan="8" style="color:var(--mute)">Koi dealer nahi</td></tr>';
+  $('#rows').onclick = onAct;
+}
+async function upd(id, patch, okMsg) {
+  const { error } = await sb.from('dealers').update(patch).eq('id', id);
+  if (error) return alert('Nahi hua: ' + error.message);
+  await loadDealers(); drawRows(); if (okMsg) toast(okMsg);
+}
+function extendFrom(d, days) { const base = Math.max(Date.now(), new Date(d.expires_at).getTime()); return new Date(base + days * DAY).toISOString(); }
+async function onAct(e) {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const d = DEALERS.find((x) => String(x.id) === b.dataset.id); if (!d) return;
+  const a = b.dataset.a;
+  if (a === 'ext30' || a === 'ext365') {
+    const days = a === 'ext30' ? 30 : 365, to = extendFrom(d, days);
+    if (confirm(`${d.name}: ${dmy(to)} tak badhaun?`)) upd(d.id, { expires_at: to, ...(a === 'ext365' ? { plan: 'yearly' } : {}) }, 'Badha diya — dealer ke app me 6 ghante me (ya restart pe) dikhega');
+  } else if (a === 'toggle') {
+    const s = d.status === 'active' ? 'suspended' : 'active';
+    if (confirm(`${d.name} ko ${s === 'active' ? 'chalu' : 'rokna'} hai?`)) upd(d.id, { status: s }, s === 'active' ? 'Chalu' : 'Roka — 6 ghante me (ya restart pe) app band');
+  } else if (a === 'reset') {
+    if (confirm(`${d.name} ka PC reset? Purane PC pe license band ho jayega, naye PC pe ek baar login karna hoga.`)) upd(d.id, { device_id: null, device_name: null, device_bound_at: null }, 'PC reset — ab naye PC pe login karein');
+  } else if (a === 'edit') editDealer(d);
+}
+
+// ---------- add / edit ----------
+function editDealer(d) {
+  const isNew = !d;
+  const exp = d ? new Date(d.expires_at) : new Date(Date.now() + 15 * DAY);
+  const ov = document.createElement('div'); ov.className = 'ov';
+  ov.innerHTML = `<div class="card"><h3 style="margin-top:0">${isNew ? 'Naya dealer' : 'Badlo — ' + esc(d.name)}</h3>
+    <div class="grid">
+      <div><label>Dealer code *</label><input id="fCode" value="${esc(d?.dealer_code || '')}"></div>
+      <div><label>Naam *</label><input id="fName" value="${esc(d?.name || '')}"></div>
+      <div><label>City</label><input id="fCity" value="${esc(d?.city || '')}"></div>
+      <div><label>Phone</label><input id="fPhone" value="${esc(d?.phone || '')}"></div>
+      <div><label>License ID * (dealer yahi daalega)</label><input id="fLogin" value="${esc(d?.login_id || '')}"></div>
+      <div><label>Password ${isNew ? '*' : '(khaali = purana hi)'}</label><div style="display:flex;gap:6px"><input id="fPass" value="${isNew ? genPass() : ''}"><button class="btn sm sec" id="fGen" type="button">Naya</button></div></div>
+      <div><label>Plan</label><select id="fPlan">${['trial', 'monthly', 'yearly', 'custom'].map((p) => `<option ${p === (d?.plan || 'trial') ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+      <div><label>Kab tak chalega</label><input id="fExp" type="date" value="${exp.toISOString().slice(0, 10)}">
+        <div class="quick">${[[15, '15 din'], [30, '1 mahina'], [90, '3 mahine'], [365, '1 saal']].map(([n, l]) => `<button class="btn sm sec" type="button" data-n="${n}">${l}</button>`).join('')}</div></div>
+    </div>
+    <label>Notes</label><textarea id="fNotes" rows="2">${esc(d?.notes || '')}</textarea>
+    <div class="err" id="fErr"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn sec" id="fX">Band</button><button class="btn" id="fSave">Save</button></div></div>`;
+  document.body.appendChild(ov);
+  $('#fX', ov).onclick = () => ov.remove();
+  $('#fGen', ov).onclick = () => { $('#fPass', ov).value = genPass(); };
+  $('.quick', ov).onclick = (e) => { const n = e.target.dataset.n; if (n) $('#fExp', ov).value = new Date(Date.now() + n * DAY).toISOString().slice(0, 10); };
+  $('#fSave', ov).onclick = async () => {
+    const v = (id) => $(id, ov).value.trim();
+    const row = { dealer_code: v('#fCode'), name: v('#fName'), city: v('#fCity') || null, phone: v('#fPhone') || null,
+      login_id: v('#fLogin').toLowerCase(), plan: v('#fPlan'), notes: v('#fNotes') || null,
+      expires_at: new Date(v('#fExp') + 'T23:59:59+05:30').toISOString() };
+    const pass = v('#fPass');
+    if (!row.dealer_code || !row.name || !row.login_id || !v('#fExp')) return ($('#fErr', ov).textContent = '* wale bharo');
+    if (isNew && !pass) return ($('#fErr', ov).textContent = 'Password chahiye');
+    if (pass && pass.length < 6) return ($('#fErr', ov).textContent = 'Password kam se kam 6 akshar');
+    $('#fSave', ov).disabled = true;
+    if (pass) row.pass_hash = await hashPass(pass);
+    const { error } = isNew ? await sb.from('dealers').insert(row) : await sb.from('dealers').update(row).eq('id', d.id);
+    if (error) { $('#fErr', ov).textContent = /duplicate/i.test(error.message) ? 'Ye dealer code ya License ID pehle se hai' : error.message; $('#fSave', ov).disabled = false; return; }
+    ov.remove(); await loadDealers(); drawRows();
+    if (pass) showCreds(row, pass); else toast('Save ho gaya');
+  };
+}
+function showCreds(row, pass) {
+  const txt = `Dealer Console license\nLicense ID: ${row.login_id}\nPassword: ${pass}\nValid: ${dmy(row.expires_at)} tak`;
+  const ov = document.createElement('div'); ov.className = 'ov';
+  ov.innerHTML = `<div class="card"><h3 style="margin-top:0">✓ Save — dealer ko ye bhejo</h3>
+    <p style="color:var(--mute);margin-top:0">Password sirf abhi dikh raha hai, baad me nahi dikhega (DB me sirf hash hai).</p>
+    <textarea rows="4" readonly>${esc(txt)}</textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn sec" id="cCp">Copy</button><button class="btn" id="cX">Theek hai</button></div></div>`;
+  document.body.appendChild(ov);
+  $('#cCp', ov).onclick = () => navigator.clipboard?.writeText(txt).then(() => toast('Copy ho gaya'));
+  $('#cX', ov).onclick = () => ov.remove();
+}
+
+// ---------- log ----------
+async function renderLog() {
+  $('#body').innerHTML = 'Load ho raha hai…';
+  const { data, error } = await sb.from('license_log').select('*').order('at', { ascending: false }).limit(200);
+  if (error) return ($('#body').textContent = error.message);
+  const name = (c) => DEALERS.find((d) => d.dealer_code === c)?.name || c || '—';
+  const pill = (a) => `<span class="pill ${a === 'denied' ? 'p-bad' : 'p-ok'}">${esc(a)}</span>`;
+  $('#body').innerHTML = `<div class="tw"><table><thead><tr><th>Kab</th><th>Dealer</th><th>Kya</th><th>Detail</th></tr></thead><tbody>
+    ${data.map((l) => `<tr><td>${dmyt(l.at)}</td><td>${esc(name(l.dealer_code))}</td><td>${pill(l.action)}</td><td>${esc(l.detail)}</td></tr>`).join('') || '<tr><td colspan="4">Kuch nahi</td></tr>'}
+  </tbody></table></div>`;
+}
+
+function toast(m) {
+  const t = document.createElement('div'); t.textContent = m;
+  t.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:9px;z-index:99;font-size:13px';
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+boot();
+</script>
+</body>
+</html>

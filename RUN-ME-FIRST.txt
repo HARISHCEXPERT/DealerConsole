@@ -1,0 +1,33 @@
+=====================================================
+  DEALER CONSOLE — CHALANE KA TAREEKA
+=====================================================
+
+SETUP:
+  npm install
+  .env banao (.env.example copy). Bharo (password DOUBLE-QUOTES me):
+     DMS_URL=https://connect.heromotocorp.biz/edealerasc_enu?SWECmd=Start
+     DMS_USER=teri-id     DMS_PASS="tera#pass"
+  (Alag id ho to DMS_SALE_USER/PASS, DMS_PARTS_*, DMS_SERVICE_* daalo — warna shared use hoga)
+
+CHALAO:
+  npm start
+  -> http://localhost:4000   (localhost hi, double-click nahi)
+
+FLOW (sab UI se):
+  1. Master (sidebar) -> Vehicle CSV upload (ek baar) -> Parts CSV (jab ho)
+  2. Sale -> "Sync now" -> DMS se aaj ka sale (headless). Sale na ho to "No sales" bolega.
+  3. Sale -> "Merge sync -> Master" -> Order# se master update, temp clear
+  4. "Kab kitni" date-range | "Kisne kitni" DSE-wise
+
+AUTO-SYNC:
+  Server chalu rahe to khud sync hota hai — har 3 ghante, 9/12/15/18/21 baje (IST).
+  Sale creds honge tabhi ON (start pe log me dikhega).
+
+DONE:
+  Sale: login(stealth), export, sync-now, merge-to-master, empty-guard, auto-sync, multi-id ready
+
+TODO (recon chahiye — tere input ke bina nahi):
+  - PowerBI connect (VIN detail): uska URL/login/export dikhana hai (Sale jaisa)
+  - Service module: DMS Service view ka export flow dekhna hai
+  - Parts module: DMS Parts view ka export flow dekhna hai
+  - (Parts/Service ki alag id .env me ready hai; bas scraper recon baaki)

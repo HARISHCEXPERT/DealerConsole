@@ -1,0 +1,12 @@
+2026/10/13-13:51:30.447 55dc Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/MANIFEST-000001
+2026/10/13-13:51:30.449 55dc Recovering log #250
+2026/10/13-13:51:30.450 55dc Level-0 table #253: started
+2026/10/13-13:51:31.367 55dc Level-0 table #253: 21461 bytes OK
+2026/10/13-13:51:31.368 55dc Recovering log #252
+2026/10/13-13:51:31.369 55dc Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/000252.log 
+2026/10/13-13:51:31.895 55dc Delete type=0 #250
+2026/10/13-13:52:32.140 55dc Level-0 table #255: started
+2026/10/13-13:52:32.193 55dc Level-0 table #255: 69291 bytes OK
+2026/10/13-13:52:32.201 55dc Delete type=0 #252
+2026/10/13-13:52:36.767 4b00 Level-0 table #257: started
+2026/10/13-13:52:36.856 4b00 Level-0 table #257: 25804 bytes OK

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Master — Dealer Console</title>
+<style>
+  :root{
+    --ink:#0F1319; --panel:#171C24; --panel-2:#1E242E; --panel-3:#232B36;
+    --line:#2A323D; --line-soft:#222933; --text:#E6EBF0; --muted:#8A97A6; --muted-2:#5E6A78;
+    --brand:#4CC2E0; --go:#3FD494; --warn:#FFB020; --crit:#FF6355; --info:#7C93FF;
+    --sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ink);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;padding:20px;-webkit-font-smoothing:antialiased}
+  ::selection{background:rgba(76,194,224,.28)}
+
+  .head{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .mark{width:36px;height:36px;border-radius:9px;background:radial-gradient(120% 120% at 30% 20%,#1c2530,#0d1116);border:1px solid #2f3a47;display:grid;place-items:center;position:relative;flex:0 0 36px}
+  .mark::after{content:"";width:16px;height:16px;border-radius:50%;border:2.5px solid var(--brand);border-right-color:transparent;border-bottom-color:transparent;transform:rotate(-45deg);box-shadow:0 0 10px rgba(76,194,224,.45)}
+  h1{font-size:18px;font-weight:700;letter-spacing:.2px}
+  .sub{font-size:11px;color:var(--muted-2);letter-spacing:.14em;text-transform:uppercase;margin-top:2px}
+
+  /* tabs */
+  .tabs{display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--line);padding-bottom:0}
+  .tab{padding:10px 18px;border:1px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;background:var(--panel);color:var(--muted);font-weight:600;font-size:13.5px;cursor:pointer;transition:.14s;position:relative;top:1px}
+  .tab.active{background:linear-gradient(180deg,rgba(76,194,224,.14),transparent);color:var(--text);border-color:rgba(76,194,224,.4);border-bottom:1px solid var(--ink)}
+
+  .btn{display:inline-flex;align-items:center;gap:7px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:12.5px;font-weight:500;padding:9px 14px;border-radius:8px;cursor:pointer;transition:.14s}
+  .btn:hover{border-color:rgba(76,194,224,.4);background:var(--panel-3)}
+  .btn.primary{background:linear-gradient(90deg,rgba(76,194,224,.16),rgba(76,194,224,.05));border-color:rgba(76,194,224,.4);color:#dff3fa}
+  .btn.danger:hover{border-color:rgba(255,99,85,.5)}
+  input[type=file]{display:none}
+
+  .bar-top{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+  .bar-top .spacer{flex:1}
+
+  .cluster{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .gauge{background:linear-gradient(180deg,var(--panel),#141920);border:1px solid var(--line);border-radius:12px;padding:14px 15px;position:relative;overflow:hidden}
+  .gauge::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent,var(--muted-2))}
+  .gauge.brand{--accent:var(--brand)} .gauge.go{--accent:var(--go)} .gauge.warn{--accent:var(--warn)} .gauge.crit{--accent:var(--crit)} .gauge.info{--accent:var(--info)}
+  .g-eye{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted-2);margin-bottom:8px}
+  .g-val{font-family:var(--mono);font-weight:600;font-size:23px;letter-spacing:-.5px;line-height:1}
+  .g-foot{margin-top:7px;font-size:11px;color:var(--muted)}
+
+  .filters{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+  .fld{display:flex;flex-direction:column;gap:4px}
+  .fld label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);padding-left:2px}
+  .fld input,.fld select{background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-family:var(--sans);font-size:12.5px;padding:8px 11px;border-radius:7px;min-width:150px}
+  .fld input:focus,.fld select:focus{outline:none;border-color:var(--brand)}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .tbl-wrap{overflow:auto;max-height:60vh}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  thead th{text-align:left;font-weight:500;color:var(--muted-2);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel-2);position:sticky;top:0;z-index:2}
+  tbody td{padding:9px 14px;border-bottom:1px solid var(--line-soft);white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+  tbody tr:hover{background:var(--panel-2);cursor:pointer}
+  .mono{font-family:var(--mono);color:var(--muted)}
+  .pill{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-block}
+  .pill.go{color:var(--go);background:rgba(63,212,148,.12)}
+  .pill.info{color:var(--info);background:rgba(124,147,255,.13)}
+  .pill.mute{color:var(--muted);background:var(--panel-3)}
+  .pill.warn{color:var(--warn);background:rgba(255,176,32,.12)}
+
+  .foot{display:flex;align-items:center;gap:12px;padding:11px 14px;border-top:1px solid var(--line-soft);font-size:12px;color:var(--muted)}
+  .foot .spacer{flex:1}
+  .pg{display:flex;gap:6px;align-items:center}
+  .pg button{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px}
+  .pg button:disabled{opacity:.4;cursor:default}
+
+  .empty{border:1px dashed var(--line);border-radius:12px;padding:44px 24px;text-align:center;color:var(--muted)}
+  .empty h2{font-size:16px;color:var(--text);margin-bottom:8px}
+  .empty p{font-size:13px;margin-bottom:10px}
+  .bar{height:8px;background:var(--panel-3);border-radius:6px;overflow:hidden;margin:16px auto 0;max-width:360px}
+  .bar > div{height:100%;background:var(--brand);width:0;transition:width .2s}
+  .prog-t{margin-top:10px;font-size:12px}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal-bg.on{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:720px;width:100%;max-height:85vh;overflow:auto}
+  .modal-h{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line-soft);position:sticky;top:0;background:var(--panel)}
+  .modal-h h3{font-size:15px}
+  .modal-h .x{margin-left:auto;cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line-soft)}
+  .kv > div{background:var(--panel);padding:9px 14px}
+  .kv .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2)}
+  .kv .v{font-size:13px;word-break:break-word}
+  @media(max-width:1080px){.cluster{grid-template-columns:repeat(2,1fr)}}
+
+  .srv-note{font-size:12px;color:var(--muted,#8A97A6);align-self:center;max-width:560px}
+  .srv-fld{display:flex;flex-direction:column;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2,#5E6A78);gap:3px}
+  .srv-fld input,.srv-fld select{background:var(--panel-2,#1E242E);border:1px solid var(--line,#2A323D);color:var(--text,#E6EBF0);border-radius:7px;padding:6px 8px;font-size:12.5px;text-transform:none;letter-spacing:0;max-width:330px}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div class="mark"></div>
+  <div><h1>Master</h1><div class="sub">Offline · browser storage</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="veh">Vehicle Master</div>
+  <div class="tab" data-tab="part">Parts Master</div>
+</div>
+
+<!-- ============ VEHICLE ============ -->
+<section id="pane-veh">
+  <div class="bar-top">
+    <label class="btn primary" for="veh-file">⬆ Upload Vehicle CSV</label>
+    <input type="file" id="veh-file" accept=".csv,.xlsx,.xls,.txt,text/csv">
+    <label class="srv-fld">Stock kis din ka <input id="veh-asof" class="mono"></label>
+    <span class="srv-note mono" id="veh-srv">Server: —</span>
+    <span class="spacer"></span>
+    <button class="btn danger" id="veh-clear">Clear</button>
+  </div>
+
+  <div class="cluster" id="veh-stats" style="display:none">
+    <div class="gauge brand"><div class="g-eye">Total Vehicles</div><div class="g-val" id="v-total">0</div><div class="g-foot">in master</div></div>
+    <div class="gauge go"><div class="g-eye">Customer Owned</div><div class="g-val" id="v-owned">0</div><div class="g-foot" id="v-owned-pct"></div></div>
+    <div class="gauge info"><div class="g-eye">Available</div><div class="g-val" id="v-avail">0</div><div class="g-foot">in stock</div></div>
+    <div class="gauge warn"><div class="g-eye">Service Due (30d)</div><div class="g-val" id="v-due">0</div><div class="g-foot">next service</div></div>
+  </div>
+
+  <div class="filters" id="veh-filters" style="display:none">
+    <div class="fld"><label>Search</label><input id="v-q" placeholder="VIN / name / phone / engine"></div>
+    <div class="fld"><label>Status</label><select id="v-status"><option value="">All status</option></select></div>
+    <div class="fld"><label>Model</label><select id="v-model"><option value="">All models</option></select></div>
+    <div class="fld"><label>Invoiced on</label><input id="v-date" placeholder="dd/mm/yyyy"></div>
+  </div>
+
+  <div class="empty" id="veh-empty">
+    <h2>Vehicle data nahi hai</h2>
+    <p><b>Upload Vehicle CSV</b> se master file daalo (CSV ya Excel). Server ke database me save hogi — uske baad Purchase aur VSR se stock khud update hota rahega.</p>
+    <div class="bar" id="veh-progWrap" style="display:none"><div id="veh-prog"></div></div>
+    <div class="prog-t" id="veh-progText"></div>
+  </div>
+
+  <div class="panel" id="veh-panel" style="display:none">
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>VIN</th><th>Model</th><th>Variant</th><th>Color</th><th>Status</th><th>Customer</th><th>Phone</th><th>Order #</th><th>Invoice Date</th><th>Next Service</th></tr></thead>
+      <tbody id="veh-tbody"></tbody>
+    </table></div>
+    <div class="foot"><span id="veh-count">0</span><span class="spacer"></span>
+      <div class="pg"><button id="veh-prev">‹ Prev</button><span id="veh-page" class="mono">1 / 1</span><button id="veh-next">Next ›</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PARTS ============ -->
+<section id="pane-part" style="display:none">
+  <div class="bar-top">
+    <label class="btn primary" for="part-file">⬆ Upload Parts CSV</label>
+    <input type="file" id="part-file" accept=".csv,.xlsx,.xls,.txt,text/csv">
+    <label class="srv-fld">Stock kis din ka <input id="part-asof" class="mono" size="10" placeholder="dd/mm/yyyy"></label>
+    <label class="srv-fld">Kab nikala <select id="part-mode">
+      <option value="now">Abhi (din ke beech) — jo bill DB me aa chuke, woh isme shamil</option>
+      <option value="end">Din band hone ke baad — us din ke saare bill shamil</option>
+      <option value="start">Din shuru hone se pehle — us din ka koi bill shamil nahi</option>
+    </select></label>
+    <button class="btn" id="part-push" title="Browser me pada Master (dobara file chune bina) server pe bhejo">☁ Server pe bhejo</button>
+    <span class="spacer"></span>
+    <button class="btn danger" id="part-clear">Clear</button>
+  </div>
+  <div class="srv-note mono" id="part-srv" style="max-width:none;margin:0 0 14px">Server: —</div>
+
+  <div class="cluster" id="part-stats" style="display:none">
+    <div class="gauge brand"><div class="g-eye">Total Parts</div><div class="g-val" id="p-total">0</div><div class="g-foot">in catalog</div></div>
+    <div class="gauge info"><div class="g-eye">Columns</div><div class="g-val" id="p-cols">0</div><div class="g-foot">detected</div></div>
+    <div class="gauge go"><div class="g-eye">Key Column</div><div class="g-val" id="p-key" style="font-size:14px">—</div><div class="g-foot">part identifier</div></div>
+    <div class="gauge warn"><div class="g-eye">Showing</div><div class="g-val" id="p-showing">0</div><div class="g-foot">after filter</div></div>
+  </div>
+
+  <div class="filters" id="part-filters" style="display:none">
+    <div class="fld"><label>Search</label><input id="p-q" placeholder="part no / name / anything"></div>
+  </div>
+
+  <div class="empty" id="part-empty">
+    <h2>Parts data nahi hai</h2>
+    <p><b>Upload Parts CSV</b> dabа. Jo bhi columns honge, khud detect ho jaayenge.</p>
+    <div class="bar" id="part-progWrap" style="display:none"><div id="part-prog"></div></div>
+    <div class="prog-t" id="part-progText"></div>
+  </div>
+
+  <div class="panel" id="part-panel" style="display:none">
+    <div class="tbl-wrap"><table>
+      <thead><tr id="part-thead"></tr></thead>
+      <tbody id="part-tbody"></tbody>
+    </table></div>
+    <div class="foot"><span id="part-count">0</span><span class="spacer"></span>
+      <div class="pg"><button id="part-prev">‹ Prev</button><span id="part-page" class="mono">1 / 1</span><button id="part-next">Next ›</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- detail modal (shared) -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-h"><h3 id="modalTitle">Detail</h3><span class="x" id="modalX">×</span></div>
+    <div class="kv" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="/vendor/xlsx.full.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+
+/* ---------- IndexedDB (2 stores) ---------- */
+const DB='dealer_master';
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,1);
+  r.onupgradeneeded=()=>{const db=r.result;
+    if(!db.objectStoreNames.contains('vehicles'))db.createObjectStore('vehicles',{keyPath:'__pk'});
+    if(!db.objectStoreNames.contains('parts'))db.createObjectStore('parts',{keyPath:'__pk'});
+    if(!db.objectStoreNames.contains('meta'))db.createObjectStore('meta',{keyPath:'k'});};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function idbClear(store){const db=await openDB();return new Promise((res,rej)=>{const t=db.transaction(store,'readwrite');t.objectStore(store).clear();t.oncomplete=res;t.onerror=()=>rej(t.error);});}
+async function idbBulk(store,rows,onProg){const db=await openDB();const CH=4000;
+  for(let i=0;i<rows.length;i+=CH){await new Promise((res,rej)=>{const t=db.transaction(store,'readwrite');const s=t.objectStore(store);
+    for(let j=i;j<Math.min(i+CH,rows.length);j++)s.put(rows[j]);t.oncomplete=res;t.onerror=()=>rej(t.error);});
+    onProg&&onProg(Math.min(i+CH,rows.length),rows.length);}}
+async function idbGet(store,pk){const db=await openDB();return new Promise((res,rej)=>{const r=db.transaction(store).objectStore(store).get(pk);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function idbAll(store){const db=await openDB();return new Promise((res,rej)=>{const out=[];const r=db.transaction(store).objectStore(store).openCursor();
+  r.onsuccess=e=>{const c=e.target.result;if(c){out.push(c.value);c.continue();}else res(out);};r.onerror=()=>rej(r.error);});}
+async function metaSet(k,v){const db=await openDB();return new Promise((res,rej)=>{const t=db.transaction('meta','readwrite');t.objectStore('meta').put({k,v});t.oncomplete=res;t.onerror=()=>rej(t.error);});}
+async function metaGet(k){const db=await openDB();return new Promise((res,rej)=>{const r=db.transaction('meta').objectStore('meta').get(k);r.onsuccess=()=>res(r.result?.v);r.onerror=()=>rej(r.error);});}
+
+/* ---------- CSV parser (quote-aware, offline) ---------- */
+function parseCSV(text,D=','){
+  if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);
+  const rows=[];let f='',row=[],q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else{if(c==='"')q=true;else if(c===D){row.push(f);f='';}
+      else if(c==='\n'){row.push(f);rows.push(row);row=[];f='';}
+      else if(c==='\r'){}else f+=c;}}
+  if(f.length||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+function toObjects(rows){
+  const h=rows[0].map(x=>x.trim());
+  const objs=[];
+  for(let i=1;i<rows.length;i++){const r=rows[i];if(r.length===1&&r[0]==='')continue;
+    const o={};for(let j=0;j<h.length;j++)o[h[j]]=(r[j]??'').trim();objs.push(o);}
+  return{headers:h,objs};
+}
+
+
+/* ---------- File -> rows (CSV / Excel, koi bhi delimiter, upar title rows ho to bhi) ---------- */
+const VIN_H=/^(vin|vin ?no\.?|vin ?number|vin ?#|chassis( ?no\.?| ?number)?|frame ?no\.?)$/i;
+const VIN_V=/^[A-HJ-NPR-Z0-9]{17}$/i;
+async function fileRows(f){
+  if(/\.xlsx?$/i.test(f.name)){
+    if(typeof XLSX==='undefined')throw new Error('Excel library load nahi hui — file ko CSV me save karke daalo');
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false});
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:'',dateNF:'dd/mm/yyyy'}).map(r=>r.map(x=>String(x??'')));
+  }
+  let text=await f.text();
+  if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);
+  const first=text.split(/\r?\n/).slice(0,20).join('\n');
+  const cnt=d=>(first.match(new RegExp(d==='|'?'\\|':d,'g'))||[]).length;
+  const delim=[',',';','\t','|'].sort((a,b)=>cnt(b)-cnt(a))[0];
+  return parseCSV(text,delim);
+}
+// header row dhoondo (pehli 25 rows me), headers trim, VIN column ko 'VIN' naam do
+function toObjectsSmart(rows,kind){
+  let hi=0,best=-1;
+  for(let i=0;i<Math.min(25,rows.length);i++){
+    const cells=rows[i].map(x=>String(x).trim());const filled=cells.filter(Boolean).length;
+    let score=filled;
+    if(kind==='vehicle'&&cells.some(c=>VIN_H.test(c)))score+=1000;
+    if(kind==='parts'&&cells.some(c=>/part/i.test(c)))score+=1000;
+    if(score>best){best=score;hi=i;}
+    if(score>=1000)break;
+  }
+  const h=rows[hi].map(x=>String(x).replace(/\s+/g,' ').trim());
+  let vinIdx=h.findIndex(x=>VIN_H.test(x));
+  const objs=[];
+  for(let i=hi+1;i<rows.length;i++){const r=rows[i];if(!r||r.every(x=>String(x).trim()===''))continue;
+    const o={};h.forEach((k,j)=>{if(k)o[k]=String(r[j]??'').trim();});objs.push(o);}
+  if(kind==='vehicle'){
+    if(vinIdx<0){ // header ka naam alag ho to values dekh ke VIN column pehchano (17 char)
+      vinIdx=h.findIndex((k,j)=>{const vals=objs.slice(0,200).map(o=>o[k]).filter(Boolean);return vals.length&&vals.filter(v=>VIN_V.test(v)).length/vals.length>=0.6;});
+    }
+    if(vinIdx>=0&&h[vinIdx]!=='VIN'){const k=h[vinIdx];objs.forEach(o=>{o.VIN=o[k];});}
+  }
+  return {headers:h,objs,headerRow:hi+1};
+}
+
+/* date dd/mm/yyyy */
+function pdate(s){if(!s)return null;const m=s.split('/');if(m.length!==3)return null;return new Date(+m[2],+m[1]-1,+m[0]);}
+const daysBetween=(a,b)=>Math.round((b-a)/864e5);
+function pillClass(st){const s=(st||'').toLowerCase();if(s.includes('owned'))return'go';if(s.includes('available'))return'info';if(s.includes('damage')||s.includes('cancel'))return'warn';return'mute';}
+
+/* ================= VEHICLE ================= */
+const V={all:[],view:[],page:1,PAGE:100};
+function vSlim(o){return{__pk:o.VIN,VIN:o.VIN,Model:o.Model||o['SKU Description']||'',Variant:o.SKU||'',Color:o.Color||'',
+  Status:o.Status||'',Cust:((o['Contact First Name']||'')+' '+(o['Contact Last Name']||'')).trim(),
+  Phone:o['Mobile Phone']||'',Order:o['Order #']||'',Inv:o['Invoice Date']||'',Due:o['Next Service Due Date']||'',Engine:o['Engine#']||''};}
+function vStats(){const n=V.all.length,today=new Date();
+  const owned=V.all.filter(v=>/owned/i.test(v.Status)).length;
+  const avail=V.all.filter(v=>/available/i.test(v.Status)).length;
+  const due=V.all.filter(v=>{const d=pdate(v.Due);return d&&daysBetween(today,d)>=0&&daysBetween(today,d)<=30;}).length;
+  $('v-total').textContent=n.toLocaleString('en-IN');$('v-owned').textContent=owned.toLocaleString('en-IN');
+  $('v-owned-pct').textContent=n?Math.round(owned/n*100)+'% of master':'';
+  $('v-avail').textContent=avail.toLocaleString('en-IN');$('v-due').textContent=due.toLocaleString('en-IN');}
+function vFillFilters(){const st=[...new Set(V.all.map(v=>v.Status).filter(Boolean))].sort();
+  const md=[...new Set(V.all.map(v=>v.Model).filter(Boolean))].sort();
+  $('v-status').innerHTML='<option value="">All status</option>'+st.map(s=>`<option>${s}</option>`).join('');
+  $('v-model').innerHTML='<option value="">All models</option>'+md.map(s=>`<option>${s}</option>`).join('');}
+function vApply(){const q=$('v-q').value.trim().toLowerCase(),st=$('v-status').value,md=$('v-model').value,dt=$('v-date').value.trim();
+  V.view=V.all.filter(v=>{if(st&&v.Status!==st)return false;if(md&&v.Model!==md)return false;if(dt&&v.Inv!==dt)return false;
+    if(q){const h=(v.VIN+' '+v.Cust+' '+v.Phone+' '+v.Engine+' '+v.Model).toLowerCase();if(!h.includes(q))return false;}return true;});
+  V.page=1;vRender();}
+function vRender(){const total=V.view.length,pages=Math.max(1,Math.ceil(total/V.PAGE));if(V.page>pages)V.page=pages;
+  const s=(V.page-1)*V.PAGE,sl=V.view.slice(s,s+V.PAGE);
+  $('veh-tbody').innerHTML=sl.map(v=>`<tr data-pk="${v.__pk}">
+    <td class="mono">${v.VIN}</td><td>${v.Model}</td><td class="mono">${v.Variant}</td><td class="mono">${v.Color}</td>
+    <td><span class="pill ${pillClass(v.Status)}">${v.Status||'—'}</span></td><td>${v.Cust||'—'}</td>
+    <td class="mono">${v.Phone||'—'}</td><td class="mono">${v.Order||'—'}</td><td class="mono">${v.Inv||'—'}</td><td class="mono">${v.Due||'—'}</td></tr>`).join('');
+  $('veh-count').textContent=total.toLocaleString('en-IN')+' vehicles'+(total!==V.all.length?` (of ${V.all.length.toLocaleString('en-IN')})`:'');
+  $('veh-page').textContent=`${V.page} / ${pages}`;$('veh-prev').disabled=V.page<=1;$('veh-next').disabled=V.page>=pages;}
+function vShow(){$('veh-empty').style.display='none';$('veh-panel').style.display='';$('veh-stats').style.display='';$('veh-filters').style.display='';vStats();vFillFilters();vApply();}
+
+$('veh-file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;e.target.value='';
+  $('veh-progWrap').style.display='';$('veh-progText').textContent='Reading…';
+  let parsed;try{parsed=toObjectsSmart(await fileRows(f),'vehicle');}catch(err){$('veh-progText').textContent='File padh nahi paaye: '+err.message;return;}
+  $('veh-progText').textContent='Parsing…';await new Promise(r=>setTimeout(r,20));
+  const {objs,headers}=parsed;const incoming=objs.filter(o=>o.VIN&&String(o.VIN).trim()).map(o=>({...o,VIN:String(o.VIN).trim(),__pk:String(o.VIN).trim()}));
+  if(!incoming.length){$('veh-progText').textContent=`VIN column nahi mila. File me ye columns mile: ${headers.filter(Boolean).slice(0,12).join(', ')||'(khaali)'} — ${objs.length} rows. Is list ka screenshot bhejo.`;return;}
+  // MERGE: existing padho, VIN pe merge (nayी add, purani update), duplicate skip
+  const existing=await idbAll('vehicles').catch(()=>[]);
+  const map=new Map(existing.map(r=>[r.__pk,r]));
+  let added=0,updated=0;
+  for(const r of incoming){ if(map.has(r.__pk)){updated++;} else {added++;} map.set(r.__pk,r); }
+  const merged=[...map.values()];
+  $('veh-progText').textContent=`Saving ${merged.length.toLocaleString('en-IN')}… (+${added} new, ${updated} updated)`;
+  await idbClear('vehicles');await idbBulk('vehicles',merged,(d,t)=>{$('veh-prog').style.width=(d/t*100)+'%';});
+  V.all=merged.map(vSlim);$('veh-progText').textContent=`Done ✓ · +${added} new · ${updated} updated · total ${merged.length}`;vShow();
+  $('veh-srv').textContent='Server pe bhej rahe…';
+  const vAsOf=$('veh-asof').value.trim()||todayDMY();
+  if(!confirm(`Vehicle Master server pe save karein?\n\nStock date: ${vAsOf}\n\nIs date se PEHLE ki purchase stock me nahi judegi (Master hi sach). Is date ya baad ki purchase judegi, sale ghategi.`)){$('veh-srv').textContent='Server pe nahi bheja (cancel)';return;}
+  try{const j=await sendMaster('vehicle',incoming,{asOf:vAsOf,mode:'end',fileName:f.name,onProg:(d,t)=>{$('veh-srv').textContent=`Server pe bhej rahe… ${d.toLocaleString('en-IN')}/${t.toLocaleString('en-IN')}`;}});
+    $('veh-srv').textContent=`Server ✓ ${j.rows.toLocaleString('en-IN')} gaadi · stock date ${j.asOf}. Ab stock = Master ki Available + is date ke baad ki Purchase − VSR me biki.`;}
+  catch(err){$('veh-srv').textContent='Server pe save nahi hua: '+err.message;alert('Vehicle Master server pe save nahi hua: '+err.message);}
+});
+$('veh-clear').addEventListener('click',async()=>{if(!confirm('Vehicle data hata dein?'))return;await idbClear('vehicles');V.all=[];V.view=[];
+  $('veh-panel').style.display='none';$('veh-stats').style.display='none';$('veh-filters').style.display='none';$('veh-empty').style.display='';$('veh-progWrap').style.display='none';$('veh-progText').textContent='';});
+['v-q'].forEach(id=>$(id).addEventListener('input',vApply));
+['v-status','v-model'].forEach(id=>$(id).addEventListener('change',vApply));
+$('v-date').addEventListener('input',vApply);
+$('veh-prev').addEventListener('click',()=>{if(V.page>1){V.page--;vRender();}});
+$('veh-next').addEventListener('click',()=>{V.page++;vRender();});
+$('veh-tbody').addEventListener('click',e=>{const tr=e.target.closest('tr[data-pk]');if(tr)openDetail('vehicles',tr.dataset.pk,'Vehicle');});
+
+/* ================= PARTS (dynamic columns) ================= */
+const P={all:[],view:[],headers:[],key:'',page:1,PAGE:100,show:[]};
+function detectKey(headers){
+  const low=headers.map(h=>h.toLowerCase());
+  const find=re=>{const i=low.findIndex(h=>re.test(h));return i>=0?headers[i]:null;};
+  return find(/part.*(no|num|code)/)||find(/^part\s*#?$/)||find(/material|sku|item.*code/)||headers[0];
+}
+function pShowCols(){ // dikhane ke liye ~10 columns: key pehle, phir baaki
+  const rest=P.headers.filter(h=>h!==P.key);
+  return [P.key,...rest].slice(0,10);
+}
+function pStats(){$('p-total').textContent=P.all.length.toLocaleString('en-IN');$('p-cols').textContent=P.headers.length;
+  $('p-key').textContent=P.key||'—';$('p-showing').textContent=P.view.length.toLocaleString('en-IN');}
+function pApply(){const q=$('p-q').value.trim().toLowerCase();
+  P.view=!q?P.all:P.all.filter(o=>Object.values(o).some(v=>String(v).toLowerCase().includes(q)));
+  P.page=1;pRender();$('p-showing').textContent=P.view.length.toLocaleString('en-IN');}
+function pRender(){
+  $('part-thead').innerHTML=P.show.map(h=>`<th>${h}</th>`).join('');
+  const total=P.view.length,pages=Math.max(1,Math.ceil(total/P.PAGE));if(P.page>pages)P.page=pages;
+  const s=(P.page-1)*P.PAGE,sl=P.view.slice(s,s+P.PAGE);
+  $('part-tbody').innerHTML=sl.map(o=>`<tr data-pk="${o.__pk}">`+P.show.map((h,i)=>
+    `<td class="${i===0?'mono':''}">${o[h]??'—'}</td>`).join('')+`</tr>`).join('');
+  $('part-count').textContent=total.toLocaleString('en-IN')+' parts'+(total!==P.all.length?` (of ${P.all.length.toLocaleString('en-IN')})`:'');
+  $('part-page').textContent=`${P.page} / ${pages}`;$('part-prev').disabled=P.page<=1;$('part-next').disabled=P.page>=pages;}
+function pShowUI(){$('part-empty').style.display='none';$('part-panel').style.display='';$('part-stats').style.display='';$('part-filters').style.display='';P.show=pShowCols();pStats();pApply();}
+
+$('part-file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;e.target.value='';   // same file dobara chune to bhi chale
+  $('part-progWrap').style.display='';$('part-progText').textContent='Reading…';
+  let parsed;try{parsed=toObjectsSmart(await fileRows(f),'parts');}catch(err){$('part-progText').textContent='File padh nahi paaye: '+err.message;return;}
+  $('part-progText').textContent='Parsing…';await new Promise(r=>setTimeout(r,20));
+  const {headers,objs}=parsed;
+  if(!objs.length){$('part-progText').textContent='Koi row nahi mili.';return;}
+  const key=detectKey(headers);
+  const incoming=objs.map((o,i)=>({__pk:(o[key]||('row-'+i)),...o}));
+  // MERGE: existing padho, part-key pe merge (nayी add, purani update), duplicate skip
+  const existing=await idbAll('parts').catch(()=>[]);
+  const map=new Map(existing.map(r=>[r.__pk,r]));
+  let added=0,updated=0;
+  for(const r of incoming){ if(map.has(r.__pk)){updated++;} else {added++;} map.set(r.__pk,r); }
+  const rows=[...map.values()];
+  $('part-progText').textContent=`Saving ${rows.length.toLocaleString('en-IN')}… (+${added} new, ${updated} updated)`;
+  await idbClear('parts');await idbBulk('parts',rows,(d,t)=>{$('part-prog').style.width=(d/t*100)+'%';});
+  await metaSet('part_headers',headers);await metaSet('part_key',key);
+  P.all=rows;P.headers=headers;P.key=key;$('part-progText').textContent=`Done ✓ · +${added} new · ${updated} updated · total ${rows.length}`;pShowUI();
+  await pushParts(incoming,f.name);
+});
+// Parts Master -> server (upload ke baad, ya "☁ Server pe bhejo" se browser wala data)
+async function pushParts(rows,fileName){
+  const asOf=$('part-asof').value.trim()||todayDMY(),mode=$('part-mode').value;
+  if(!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(asOf)){alert('Stock ki date dd/mm/yyyy me daalo');return;}
+  if(!rows||!rows.length){alert('Browser me Parts Master nahi — pehle file upload karo');return;}
+  if(!confirm(`Parts Master server pe save karein?\n\nStock date: ${asOf}\nKab nikala: ${MODE_TXT[mode]}\n\n`+(mode==='now'?'Upload se PEHLE aaj ki Parts Sales + Purchase sync kar lena — jo bill abhi DB me hain woh Master me shamil maane jayenge.':'')))return;
+  const note=$('part-srv');note.style.color='';
+  try{const j=await sendMaster('parts',rows,{asOf,mode,fileName,onProg:(d,t)=>{note.textContent=`Server pe bhej rahe… ${d.toLocaleString('en-IN')}/${t.toLocaleString('en-IN')}`;}});
+    let msg=`Server ✓ ${j.rows.toLocaleString('en-IN')} rows · stock ${j.asOf} (${MODE_TXT[j.mode]})`+(j.mode==='now'?` · us din ke ${j.excluded} bill Master me shamil maane`:'');
+    if(j.recon)msg+=`\nMilaan: ${j.recon.checked} parts check, ${j.recon.diffs} me farak (value ₹${j.recon.valueDiff.toLocaleString('en-IN')}). Parts → Stock me "Milaan" dekho.`;
+    note.textContent=msg;note.style.color='var(--go,#3fb950)';alert(msg+'\n\nAb se stock = ye Master + baad ki Purchase − baad ki Sale (khud update hoga).');
+  }catch(err){note.textContent='⚠ Server pe save nahi hua: '+err.message;note.style.color='#e0524d';alert('Parts Master server pe save nahi hua: '+err.message);}
+}
+$('part-push').addEventListener('click',async()=>{const rows=P.all&&P.all.length?P.all:await idbAll('parts').catch(()=>[]);await pushParts(rows,'browser-master');});
+$('part-clear').addEventListener('click',async()=>{if(!confirm('Parts data hata dein?'))return;await idbClear('parts');P.all=[];P.view=[];P.headers=[];
+  $('part-panel').style.display='none';$('part-stats').style.display='none';$('part-filters').style.display='none';$('part-empty').style.display='';$('part-progWrap').style.display='none';$('part-progText').textContent='';});
+$('p-q').addEventListener('input',pApply);
+$('part-prev').addEventListener('click',()=>{if(P.page>1){P.page--;pRender();}});
+$('part-next').addEventListener('click',()=>{P.page++;pRender();});
+$('part-tbody').addEventListener('click',e=>{const tr=e.target.closest('tr[data-pk]');if(tr)openDetail('parts',tr.dataset.pk,'Part');});
+
+/* ---------- shared detail modal ---------- */
+async function openDetail(store,pk,label){const full=await idbGet(store,pk);if(!full)return;
+  const title=store==='vehicles'?(full.VIN+' — '+(full.Model||'')):(pk+' — '+label);
+  $('modalTitle').textContent=title;
+  $('modalBody').innerHTML=Object.entries(full).filter(([k,v])=>k!=='__pk'&&v!=='').map(([k,v])=>`<div class="k">${k}</div><div class="v">${v}</div>`).join('');
+  $('modalBg').classList.add('on');}
+$('modalX').addEventListener('click',()=>$('modalBg').classList.remove('on'));
+$('modalBg').addEventListener('click',e=>{if(e.target===$('modalBg'))$('modalBg').classList.remove('on');});
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
+  const v=t.dataset.tab;$('pane-veh').style.display=v==='veh'?'':'none';$('pane-part').style.display=v==='part'?'':'none';}));
+
+/* ---------- on load: saved data? ---------- */
+(async()=>{
+  try{
+    const veh=await idbAll('vehicles');if(veh.length){V.all=veh.map(vSlim);vShow();}
+    const part=await idbAll('parts');if(part.length){P.all=part;P.headers=await metaGet('part_headers')||Object.keys(part[0]).filter(k=>k!=='__pk');P.key=await metaGet('part_key')||P.headers[0];pShowUI();}
+  }catch(e){console.warn(e);}
+})();
+
+/* ---------- SERVER UPLOAD: master -> DB (chunks) -> commit ---------- */
+function todayDMY(){const d=new Date();return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;}
+async function sendMaster(kind,rows,{asOf,mode,fileName,onProg}){
+  const CH=3000;
+  for(let i=0;i<rows.length;i+=CH){
+    const r=await fetch('/api/master/'+kind+'/chunk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i/CH,rows:rows.slice(i,i+CH).map(o=>{const x={...o};delete x.__pk;return x;})})});
+    const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+    onProg&&onProg(Math.min(i+CH,rows.length),rows.length);
+  }
+  const r=await fetch('/api/master/'+kind+'/commit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asOf,mode,fileName})});
+  const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+const MODE_TXT={now:'abhi ka (din ke beech)',end:'din band ke baad',start:'din shuru se pehle'};
+async function showServerState(){
+  try{const s=await (await fetch('/api/master/snapshots')).json();
+    const v=s.find(x=>x.kind==='vehicle'),p=s.find(x=>x.kind==='parts');
+    const f=x=>x?`${x.rows.toLocaleString('en-IN')} rows · ${x.as_of.split('-').reverse().join('/')} (${MODE_TXT[x.mode]||x.mode})`:'abhi upload nahi hua';
+    $('veh-srv').textContent='Server: '+f(v);
+    const ps=$('part-srv');ps.textContent=p?'Server ✓ '+f(p):'⚠ Server pe Parts Master NAHI hai — upar "☁ Server pe bhejo" dabao (browser wala data chala jayega)';ps.style.color=p?'var(--go,#3fb950)':'#e0524d';
+  }catch(e){}
+}
+(function(){
+  const nat=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+  const t=new Date(),today=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  ['part-asof','veh-asof'].forEach(id=>{const a=$(id);if(!a)return;
+    a.type='date';a.removeAttribute('placeholder');a.removeAttribute('size');a.max=today;a.style.colorScheme='dark';
+    Object.defineProperty(a,'value',{configurable:true,get(){const v=nat.get.call(a);return v?v.split('-').reverse().join('/'):'';},
+      set(x){x=String(x||'');const m=x.split('/');nat.set.call(a,m.length===3?`${m[2]}-${m[1].padStart(2,'0')}-${m[0].padStart(2,'0')}`:x);}});
+    a.addEventListener('focus',()=>{try{a.showPicker&&a.showPicker();}catch(e){}});
+    if(!a.value)a.value=todayDMY();});
+  showServerState();})();
+</script>
+</body>
+</html>
