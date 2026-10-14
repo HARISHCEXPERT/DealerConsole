@@ -4,6 +4,7 @@ import { autoSyncTick, autoSyncConfig } from './jobs/catchup.js';
 import express from 'express';
 import cron from 'node-cron';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { env } from './config/env.js';
 import { api } from './api/routes.js';
@@ -13,6 +14,9 @@ import { log, err } from './utils/logger.js';
 import { checkLogin, makeToken, validToken, dropToken, getCookie, requireAuth } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// dev me frontend ../frontend hai; release build me server.mjs ke bagal (./frontend). Jo mile wahi.
+const ASSET = fs.existsSync(path.join(__dirname, 'frontend')) ? __dirname : path.join(__dirname, '..');
+const NM = fs.existsSync(path.join(ASSET, 'node_modules')) ? path.join(ASSET, 'node_modules') : path.join(__dirname, '..', 'node_modules');
 
 const app = express();
 app.use(express.json({ limit: '25mb' }));   // PDF export me poori list aati hai
@@ -40,7 +44,6 @@ app.get('/auth/check', (req, res) => {
 // License admin panel — sirf tumhare PC pe (.env me ADMIN_PANEL=1). Dealer ke PC pe ye page hota hi nahi.
 // Login Supabase admin email/password se (app ka login nahi chahiye).
 if (process.env.ADMIN_PANEL === '1') {
-  const fs = await import('node:fs');
   app.get(['/admin', '/admin.html'], (_req, res) => {
     const cfg = JSON.stringify({ url: process.env.LICENSE_URL || '', key: process.env.LICENSE_ANON_KEY || '' }).replace(/</g, '\\u003c');
     const html = fs.readFileSync(path.join(__dirname, '..', 'admin', 'admin.html'), 'utf8')

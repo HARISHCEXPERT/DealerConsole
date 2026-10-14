@@ -21,6 +21,8 @@ export async function launchBrowser(profile = 'default') {
   const dir = path.resolve('.profiles', profile);
   fs.mkdirSync(dir, { recursive: true });
   return puppeteer.launch({
+    // release build: dealer ke PC ka Google Chrome (puppeteer ka alag Chrome download nahi)
+    ...(process.env.DC_SYSTEM_CHROME === '1' ? { channel: 'chrome' } : {}),
     headless: headful ? false : 'new',
     slowMo: headful ? 35 : 0,
     defaultViewport: null,

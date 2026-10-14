@@ -15,7 +15,8 @@
     "pull": "node scripts/run-pull.js",
     "pull-jc": "node --disable-warning=ExperimentalWarning scripts/pull-jc.js",
     "license-keygen": "node scripts/license-keygen.js",
-    "doctor": "node --disable-warning=ExperimentalWarning scripts/doctor.js"
+    "doctor": "node --disable-warning=ExperimentalWarning scripts/doctor.js",
+    "build": "node scripts/build.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",
@@ -30,5 +31,9 @@
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "tesseract.js": "^5.1.1",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "terser": "^5.36.0"
   }
 }

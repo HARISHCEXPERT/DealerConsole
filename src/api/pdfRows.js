@@ -9,12 +9,15 @@
 // ============================================================
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
+import nodePath from 'node:path';
+import nodeFs from 'node:fs';
+import { dynImport } from '../utils/dynImport.js';
 
 const require = createRequire(import.meta.url);
 let _pdf = null;
 async function pdfjs() {
   if (_pdf) return _pdf;
-  _pdf = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  _pdf = await dynImport('pdfjs-dist/legacy/build/pdf.mjs');
   _pdf.GlobalWorkerOptions.workerSrc = pathToFileURL(require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')).href;
   return _pdf;
 }
@@ -141,10 +144,10 @@ class NapiCanvasFactory {
 let _worker = null;
 async function ocrWorker() {
   if (_worker) return _worker;
-  const { createWorker } = await import('tesseract.js');
-  const path = await import('node:path');
+  const { createWorker } = await dynImport('tesseract.js');
+  const path = nodePath;
   const langPath = path.dirname(require.resolve('@tesseract.js-data/eng/package.json')) + '/4.0.0_best_int';
-  const cachePath = path.resolve('db', '.ocr-cache'); (await import('node:fs')).mkdirSync(cachePath, { recursive: true });
+  const cachePath = path.resolve('db', '.ocr-cache'); nodeFs.mkdirSync(cachePath, { recursive: true });
   _worker = await createWorker('eng', 1, { langPath, gzip: true, cachePath });
   await _worker.setParameters({ preserve_interword_spaces: '1' });
   return _worker;
