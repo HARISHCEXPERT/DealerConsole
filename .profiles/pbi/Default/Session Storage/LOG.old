@@ -1,12 +1,16 @@
-2026/10/13-13:51:30.447 55dc Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/MANIFEST-000001
-2026/10/13-13:51:30.449 55dc Recovering log #250
-2026/10/13-13:51:30.450 55dc Level-0 table #253: started
-2026/10/13-13:51:31.367 55dc Level-0 table #253: 21461 bytes OK
-2026/10/13-13:51:31.368 55dc Recovering log #252
-2026/10/13-13:51:31.369 55dc Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/000252.log 
-2026/10/13-13:51:31.895 55dc Delete type=0 #250
-2026/10/13-13:52:32.140 55dc Level-0 table #255: started
-2026/10/13-13:52:32.193 55dc Level-0 table #255: 69291 bytes OK
-2026/10/13-13:52:32.201 55dc Delete type=0 #252
-2026/10/13-13:52:36.767 4b00 Level-0 table #257: started
-2026/10/13-13:52:36.856 4b00 Level-0 table #257: 25804 bytes OK
+2026/10/13-16:15:18.742 1154 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/MANIFEST-000001
+2026/10/13-16:15:18.748 1154 Recovering log #254
+2026/10/13-16:15:18.848 1154 Level-0 table #257: started
+2026/10/13-16:15:18.899 1154 Level-0 table #257: 25804 bytes OK
+2026/10/13-16:15:18.922 1154 Recovering log #256
+2026/10/13-16:15:19.178 1154 Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/000256.log 
+2026/10/13-16:15:19.219 1154 Delete type=0 #254
+2026/10/13-16:15:19.221 37d8 Compacting 4@0 + 1@1 files
+2026/10/13-16:15:19.591 37d8 Generated table #258@0: 45 keys, 30455 bytes
+2026/10/13-16:15:19.591 37d8 Compacted 4@0 + 1@1 files => 30455 bytes
+2026/10/13-16:15:19.600 37d8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/13-16:15:19.641 37d8 Delete type=2 #249
+2026/10/13-16:15:19.642 37d8 Delete type=2 #251
+2026/10/13-16:15:19.642 37d8 Delete type=2 #253
+2026/10/13-16:15:19.671 37d8 Delete type=2 #255
+2026/10/13-16:15:19.671 37d8 Delete type=2 #257

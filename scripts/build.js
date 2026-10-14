@@ -67,7 +67,7 @@ if (ni.status !== 0) die('npm install fail');
 
 step('.env (sirf license URL/key - password/encryption key dealer ke PC pe banegi)');
 fs.writeFileSync(path.join(OUT, 'app', '.env.base'),
-`LICENSE_URL=${process.env.LICENSE_URL}\nLICENSE_ANON_KEY=${process.env.LICENSE_ANON_KEY}\n${process.env.LICENSE_SUPPORT ? 'LICENSE_SUPPORT=' + process.env.LICENSE_SUPPORT + '\n' : ''}DC_SYSTEM_CHROME=1\nPORT=4000\n`);
+`LICENSE_URL=${process.env.LICENSE_URL}\nLICENSE_ANON_KEY=${process.env.LICENSE_ANON_KEY}\n${process.env.LICENSE_SUPPORT ? 'LICENSE_SUPPORT=' + process.env.LICENSE_SUPPORT + '\n' : ''}DC_SYSTEM_CHROME=1\nDC_NO_APP_LOGIN=1\nPORT=4000\n`);
 
 step('Launcher + readme');
 fs.writeFileSync(path.join(OUT, 'Dealer Console.bat'), [
@@ -77,14 +77,13 @@ fs.writeFileSync(path.join(OUT, 'Dealer Console.bat'), [
   'if not exist ".env" (',
   '  copy .env.base .env >nul',
   '  for /f %%k in (\'node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"\') do echo ENCRYPTION_KEY=%%k>>.env',
-  '  for /f %%p in (\'node -e "console.log(require(\'crypto\').randomBytes(9).toString(\'base64url\'))"\') do echo DC_PASSWORD=%%p>>.env',
   ')',
   'start "" cmd /c "timeout /t 6 >nul & start http://localhost:4000"',
   'node server.mjs',
   'pause',
 ].join('\r\n'), 'utf8');
 fs.writeFileSync(path.join(OUT, 'PEHLE-PADHO.txt'),
-`Dealer Console v${pkg.version}\r\n\r\n1. Chrome install hona chahiye (zyadatar PC me hota hai).\r\n2. "Dealer Console.bat" pe double-click. Pehli baar thoda ruko.\r\n3. Browser me localhost:4000 khulega. Login ID/password Dealer Console se mila hoga.\r\n4. App ka apna login: user admin. Pehli baar ka password app\\.env me DC_PASSWORD= ke aage hai.\r\n`, 'utf8');
+`Dealer Console v${pkg.version}\r\n\r\n1. Chrome install hona chahiye (zyadatar PC me hota hai).\r\n2. "Dealer Console.bat" pe double-click. Pehli baar thoda ruko.\r\n3. Browser me localhost:4000 khulega.\r\n4. Pehli screen par Dealer Console se mili License ID aur Password daalo — bas. (Alag app login nahi.)\r\n`, 'utf8');
 
 // node.exe saath (agar is PC pe hai)
 try { const nx = process.execPath; fs.mkdirSync(path.join(OUT, 'node'), { recursive: true }); fs.copyFileSync(nx, path.join(OUT, 'node', path.basename(nx))); console.log('  node.exe daal diya'); }
@@ -92,6 +91,11 @@ catch { console.log('  (node.exe copy nahi hua - dealer ke PC pe Node ho ya node
 
 // test se bani koi db/.env app me ho to hata do
 for (const junk of ['db', '.env', 'downloads', '.profiles', 'logs']) fs.rmSync(path.join(OUT, 'app', junk), { recursive: true, force: true });
+// pakka karo zaroori files bani
+for (const must of ['app/server.mjs', 'app/frontend/index.html', 'app/frontend/login.html', 'app/node_modules']) {
+  if (!fs.existsSync(path.join(OUT, must))) die('Build adhoori: ' + must + ' nahi bana');
+}
+console.log('  frontend files: ' + fs.readdirSync(path.join(OUT, 'app', 'frontend')).join(', '));
 step('DONE: ' + OUT);
 // Windows pe zip
 if (process.platform === 'win32') {

@@ -16,7 +16,8 @@
     "pull-jc": "node --disable-warning=ExperimentalWarning scripts/pull-jc.js",
     "license-keygen": "node scripts/license-keygen.js",
     "doctor": "node --disable-warning=ExperimentalWarning scripts/doctor.js",
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "publish": "node scripts/publish.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",

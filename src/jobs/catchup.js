@@ -68,6 +68,9 @@ function lastFail(name) {
 export function plan() {
   const today = todayIso();
   const monthStart = today.slice(0, 8) + '01';
+  // pehli baar sync: FY (April–March) ki shuruaat se. aaj April+ -> is saal 1 Apr; warna pichhle saal 1 Apr
+  const y = +today.slice(0, 4), m = +today.slice(5, 7);
+  const fyStart = `${m >= 4 ? y : y - 1}-04-01`;
   const portal = portalOn() ? PORTAL.map((x) => {
     const last = lastOk(x.name), fail = lastFail(x.name);
     const lastDay = last?.finished_at ? new Date(Date.parse(last.finished_at) + 5.5 * 3600e3).toISOString().slice(0, 10) : null;
@@ -75,13 +78,13 @@ export function plan() {
       lastAt: last?.finished_at || null, lastFrom: toDMY(last?.range_from || ''), lastTo: toDMY(last?.range_to || ''), lastRows: last?.rows_in ?? null,
       lastError: fail && (!last || fail.finished_at > last.finished_at) ? fail.error : null,
       // baaki reports ki tarah: aakhri sync ki To − 1 din se aaj tak. Pehli baar (koi sync nahi) = pichhle PORTAL_DAYS din
-      next: { from: toDMY((() => { let f = last?.range_to ? addDays(last.range_to, -1) : addDays(today, -PORTAL_DAYS); if (f > today) f = today; return f; })()), to: toDMY(today) },
+      next: { from: toDMY((() => { let f = last?.range_to ? addDays(last.range_to, -1) : fyStart; if (f > today) f = today; return f; })()), to: toDMY(today) },
       due: !(last?.range_to >= today && lastDay === today), note: '' };
   }) : [];
   // Service JobCard invoices (Siebel) — aakhri sync ki To − 1 din se aaj tak
   const svc = serviceOn() ? [(() => {
     const last = lastOk('service_invoice'), fail = lastFail('service_invoice');
-    let from = last?.range_to ? addDays(last.range_to, -1) : monthStart; if (from < addDays(today, -365)) from = addDays(today, -365);
+    let from = last?.range_to ? addDays(last.range_to, -1) : fyStart;   // pehli baar FY se
     const lastDay = last?.finished_at ? new Date(Date.parse(last.finished_at) + 5.5 * 3600e3).toISOString().slice(0, 10) : null;
     return { name: 'service_invoice', label: 'Service — JobCard Invoices (Hero Connect)', service: true,
       lastAt: last?.finished_at || null, lastFrom: toDMY(last?.range_from || ''), lastTo: toDMY(last?.range_to || ''), lastRows: last?.rows_in ?? null,
@@ -95,7 +98,7 @@ export function plan() {
     let from;
     if (name === 'parts_order') from = addDays(today, -PO_DAYS);
     else if (last?.range_to) from = addDays(last.range_to, -1);
-    else from = monthStart;
+    else from = fyStart;   // pehli baar FY se
     let note = '';
     if (from < addDays(today, -365)) { from = addDays(today, -365); note = '1 saal se purana — baaki mahine-wise haath se'; }
     if (from > today) from = today;

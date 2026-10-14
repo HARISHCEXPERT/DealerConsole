@@ -14,9 +14,11 @@ import { log, err } from './utils/logger.js';
 import { checkLogin, makeToken, validToken, dropToken, getCookie, requireAuth } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// dev me frontend ../frontend hai; release build me server.mjs ke bagal (./frontend). Jo mile wahi.
-const ASSET = fs.existsSync(path.join(__dirname, 'frontend')) ? __dirname : path.join(__dirname, '..');
-const NM = fs.existsSync(path.join(ASSET, 'node_modules')) ? path.join(ASSET, 'node_modules') : path.join(__dirname, '..', 'node_modules');
+// dev: frontend root me (../frontend). release build: server.mjs ke bagal (app/frontend). cwd bhi dekho (.bat app me cd karta hai).
+const pick = (sub, cands) => cands.find((d) => { try { return fs.existsSync(path.join(d, sub)); } catch { return false; } }) || cands[0];
+const ASSET = pick('frontend', [__dirname, process.cwd(), path.join(__dirname, '..')]);
+const NM = pick('@supabase', [path.join(ASSET, 'node_modules'), path.join(__dirname, 'node_modules'), path.join(process.cwd(), 'node_modules'), path.join(__dirname, '..', 'node_modules')]);
+log(`[paths] frontend: ${path.join(ASSET, 'frontend')}`);
 
 const app = express();
 app.use(express.json({ limit: '25mb' }));   // PDF export me poori list aati hai
@@ -46,26 +48,33 @@ app.get('/auth/check', (req, res) => {
 if (process.env.ADMIN_PANEL === '1') {
   app.get(['/admin', '/admin.html'], (_req, res) => {
     const cfg = JSON.stringify({ url: process.env.LICENSE_URL || '', key: process.env.LICENSE_ANON_KEY || '' }).replace(/</g, '\\u003c');
-    const html = fs.readFileSync(path.join(__dirname, '..', 'admin', 'admin.html'), 'utf8')
+    const html = fs.readFileSync(path.join(ASSET, 'admin', 'admin.html'), 'utf8')
       .replace('<script>\nconst $', `<script>window.DC_ADMIN_CFG=${cfg};</script>\n<script>\nconst $`);
     res.type('html').send(html);
   });
   // supabase-js apne node_modules se (CDN/internet block ho to bhi chale)
-  app.get('/admin/supabase.js', (_req, res) => res.sendFile(path.join(__dirname, '..', 'node_modules', '@supabase', 'supabase-js', 'dist', 'umd', 'supabase.js')));
+  app.get('/admin/supabase.js', (_req, res) => res.sendFile(path.join(NM, '@supabase', 'supabase-js', 'dist', 'umd', 'supabase.js')));
   log('License admin panel: http://localhost:' + env.port + '/admin');
 }
 
 // login page + its assets — bina auth ke
-app.get('/login', (_req, res) => res.sendFile(path.join(__dirname, '..', 'frontend', 'login.html')));
+app.get('/login', (_req, res) => res.sendFile(path.join(ASSET, 'frontend', 'login.html')));
+
+// Dealer build: app ka alag admin/password login nahi — LICENSE hi ekmaatra login.
+// DC_NO_APP_LOGIN=1 (release .env) -> auth gate khula; license.js ki screen + licenseGate hi rok hai.
+const noAppLogin = process.env.DC_NO_APP_LOGIN === '1';
+const authGate = noAppLogin ? (_req, _res, next) => next() : requireAuth;
+if (noAppLogin) log('[auth] app login band — sirf License se (dealer build)');
 
 // API protected
 // License: status/activate hamesha khule; baaki /api license ke peeche
 const lic = express.Router(); licenseRoutes(lic);
-app.use('/api', requireAuth, lic);
-app.use('/api', requireAuth, licenseGate, api);
+app.use('/api', authGate, lic);
+app.use('/api', authGate, licenseGate, api);
 
 // Frontend: agar login nahi -> login page bhej do (index/master/etc.)
 app.use((req, res, next) => {
+  if (noAppLogin) return next();                       // dealer build: seedha page do, license.js khud gate karega
   // login page/assets allow
   if (req.path === '/login' || req.path.startsWith('/auth')) return next();
   if (!validToken(getCookie(req, 'dc_session'))) {
@@ -77,9 +86,9 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+app.use(express.static(path.join(ASSET, 'frontend')));
 // Excel library local se (internet ke bina bhi export chale)
-app.use('/vendor', express.static(path.join(__dirname, '..', 'node_modules', 'xlsx', 'dist')));
+app.use('/vendor', express.static(path.join(NM, 'xlsx', 'dist')));
 
 // ---- AUTO-SYNC: har 3 ghante, 9am–9pm IST (9,12,15,18,21) ----
 // Sirf tab jab sale creds ho. Sale na ho to guard "No sales" handle karta hai (crash nahi).
