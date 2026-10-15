@@ -65,7 +65,7 @@ export async function pullReports(names, dateRange = null, opts = {}) {
       step(name, 'running');
       try {
         log(`[pull] ${name} ${range ? range.from + ' -> ' + (range.to || range.from) : '(default range)'}`);
-        const { file } = await exportReport(page, DL, range, url);
+        const { file } = await exportReport(page, DL, range, url, { allSlicers: !!src.allSlicers, pageName: src.report.page || null });
         const rows = readSheet(file);
         const st = ingest(src, rows, { range });
         for (const extra of src.alsoIngest || []) {                       // wahi file doosri table me bhi (jaise labour lines)

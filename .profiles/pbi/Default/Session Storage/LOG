@@ -1,3 +1,9 @@
-2026/10/14-11:54:33.179 2174 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/MANIFEST-000001
-2026/10/14-11:54:33.404 2174 Recovering log #256
-2026/10/14-11:54:33.412 2174 Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/000256.log 
+2026/10/15-12:36:40.273 a80 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/MANIFEST-000001
+2026/10/15-12:36:40.653 a80 Recovering log #309
+2026/10/15-12:36:41.511 a80 Level-0 table #312: started
+2026/10/15-12:36:41.655 a80 Level-0 table #312: 68555 bytes OK
+2026/10/15-12:36:41.656 a80 Recovering log #311
+2026/10/15-12:36:41.721 a80 Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Session Storage/000311.log 
+2026/10/15-12:36:41.732 a80 Delete type=0 #309
+2026/10/15-12:37:14.912 a80 Level-0 table #314: started
+2026/10/15-12:37:15.034 a80 Level-0 table #314: 123497 bytes OK

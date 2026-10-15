@@ -693,6 +693,8 @@
         <button class="subtab active" data-svsub="dash">📊 Dashboard</button>
         <button class="subtab" data-svsub="jc">🧾 JobCard Details</button>
         <button class="subtab" data-svsub="chk">🚩 Jaanch</button>
+        <button class="subtab" data-svsub="fsc">🎯 FSC VIN tracking</button>
+        <button class="subtab" data-svsub="paid">💵 Paid VIN tracking</button>
       </div>
 
       <div class="subview active" id="svsub-dash">
@@ -794,6 +796,68 @@
           <tbody id="svBody"><tr><td colspan="14" style="color:var(--muted-2)">Service Sync karo</td></tr></tbody>
         </table></div></div>
         <div class="empty-note" style="margin-top:10px">Kisi line pe click karo → us job card ki poori detail (tax, discount, IRN, insurance wagera).</div>
+      </div>
+
+      <!-- ====== FSC VIN tracking ====== -->
+      <div class="subview" id="svsub-fsc">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px">
+          <button class="btn-sync" id="fvSync"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg> PowerBI se laao</button>
+          <span class="mono" id="fvInfo" style="color:var(--muted);font-size:12.5px"></span>
+        </div>
+        <div class="hint" style="margin:0 0 14px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><span id="fscVinNote">Har gaadi ko jitni FSC milni chahiye (Max FSC Count) me se kitni abhi tak li (claimed date se), aur kitni <b>abhi bhi baaki</b> hai. "Avail nahi kari" = jisme abhi FSC avail ho sakti hai (expiry nahi nikli); "nikal gayi" = expiry date nikal gayi par li nahi. <b>%</b> = kitni FSC avail ho chuki. <span id="fscVinPull" style="color:var(--muted-2)"></span></span></div>
+        <div class="cluster">
+          <div class="gauge brand"><div class="gauge-eyebrow">🏍 Gaadi</div><div class="gauge-val" id="fv-veh">0</div><div class="gauge-foot" id="fv-veh-f">—</div></div>
+          <div class="gauge go"><div class="gauge-eyebrow">✅ FSC avail ho chuki</div><div class="gauge-val" id="fv-pct">0%</div><div class="gauge-foot" id="fv-pct-f">—</div></div>
+          <div class="gauge warn"><div class="gauge-eyebrow">⏳ Yet to avail (FSC due)</div><div class="gauge-val" id="fv-open">0</div><div class="gauge-foot" id="fv-open-f">inhe bulana hai</div></div>
+          <div class="gauge info"><div class="gauge-eyebrow">❌ Nikal gayi (expired)</div><div class="gauge-val" id="fv-miss">0</div><div class="gauge-foot">expiry ke baad avail nahi ki</div></div>
+        </div>
+        <div class="section-head"><h2>FSC due — I se V</h2><span class="count" id="fv-bycount">konsi FSC due · click = filter</span><span class="rule"></span></div>
+        <div class="panel"><div class="tbl-wrap"><table>
+          <thead><tr><th>Due FSC</th><th class="num">Gaadi</th></tr></thead>
+          <tbody id="fvDueBody"><tr><td colspan="2" style="color:var(--muted-2)">Service Sync karo</td></tr></tbody>
+        </table></div></div>
+        <div class="filters" style="margin-top:18px">
+          <div class="fld"><label>Dikhao</label><select id="fvFilter"><option value="due">Koi FSC due (yet to avail)</option><option value="d1">FSC I due</option><option value="d2">FSC II due</option><option value="d3">FSC III due</option><option value="d4">FSC IV due</option><option value="d5">FSC V due</option><option value="done">Saari ho gayi</option><option value="">Saari gaadi</option></select></div>
+          <div class="fld"><label>Expiry — From</label><input id="fvFrom" placeholder="dd/mm/yyyy" style="width:130px"></div>
+          <div class="fld"><label>Expiry — To</label><input id="fvTo" placeholder="dd/mm/yyyy" style="width:130px"></div>
+          <div class="fld"><label>Model</label><select id="fvModel"><option value="">Sab</option></select></div>
+          <div class="fld" style="flex:1"><label>Search</label><input id="fvSearch" placeholder="VIN / customer / mobile"></div>
+        </div>
+        <div class="section-head"><h2>Gaadi-wise</h2><span class="count" id="fv-count">—</span><span class="rule"></span></div>
+        <div class="panel"><div class="tbl-wrap"><table>
+          <thead><tr><th>VIN (Asset)</th><th>Model</th><th>Customer</th><th>Mobile</th><th class="num">Max FSC</th><th class="num">Li</th><th>Due FSC</th><th>Expiry date</th><th>Expiry month</th></tr></thead>
+          <tbody id="fvBody"><tr><td colspan="9" style="color:var(--muted-2)">Service Sync karo (FSC VIN report apne aap aati hai)</td></tr></tbody>
+        </table></div></div>
+        <div class="section-head" style="margin-top:22px"><h2>FSC number-wise (detail)</h2><span class="count">FSC I se V · kitni li, kitni baaki</span><span class="rule"></span></div>
+        <div class="panel"><div class="tbl-wrap"><table>
+          <thead><tr><th>FSC</th><th class="num">Eligible gaadi</th><th class="num">Avail ki</th><th class="num">Baaki (avail ho sakti)</th><th class="num">Nikal gayi</th><th class="num">% avail</th></tr></thead>
+          <tbody id="fvByBody"><tr><td colspan="6" style="color:var(--muted-2)">Service Sync karo</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- ====== Paid VIN tracking ====== -->
+      <div class="subview" id="svsub-paid">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px">
+          <button class="btn-sync" id="pvSync"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg> PowerBI se laao</button>
+          <span class="mono" id="pvInfo" style="color:var(--muted);font-size:12.5px"></span>
+        </div>
+        <div class="hint" style="margin:0 0 14px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><span id="paidVinNote">Har gaadi ki paid service tracking — Hero ki report "Due Service Type" khud batati hai: <b>Yet To Avail</b> (bulana hai), <b>Availed</b> (ho gaya), <b>Expired</b> (nikal gaya) — 1st/2nd/3rd ke saath. <span id="paidVinPull" style="color:var(--muted-2)"></span></span></div>
+        <div class="cluster">
+          <div class="gauge brand"><div class="gauge-eyebrow">🏍 Gaadi</div><div class="gauge-val" id="pv-veh">0</div><div class="gauge-foot" id="pv-veh-f">—</div></div>
+          <div class="gauge warn"><div class="gauge-eyebrow">⏳ Yet to avail (bulana hai)</div><div class="gauge-val" id="pv-due">0</div><div class="gauge-foot" id="pv-due-f">inhe bulana hai</div></div>
+          <div class="gauge go"><div class="gauge-eyebrow">✅ Availed (ho gayi)</div><div class="gauge-val" id="pv-avail">0</div><div class="gauge-foot" id="pv-avail-f">—</div></div>
+          <div class="gauge info"><div class="gauge-eyebrow">❌ Expired (nikal gayi)</div><div class="gauge-val" id="pv-exp">0</div><div class="gauge-foot">time nikal gaya</div></div>
+        </div>
+        <div class="filters" style="margin-top:18px">
+          <div class="fld"><label>Dikhao</label><select id="pvFilter"><option value="yet">Yet to avail (bulana hai)</option><option value="availed">Availed (ho gayi)</option><option value="expired">Expired (nikal gayi)</option><option value="">Saari gaadi</option></select></div>
+          <div class="fld"><label>Model</label><select id="pvModel"><option value="">Sab</option></select></div>
+          <div class="fld" style="flex:1"><label>Search</label><input id="pvSearch" placeholder="VIN / customer / mobile"></div>
+        </div>
+        <div class="section-head"><h2>Gaadi-wise</h2><span class="count" id="pv-count">—</span><span class="rule"></span></div>
+        <div class="panel"><div class="tbl-wrap"><table>
+          <thead><tr><th>VIN (Asset)</th><th>Model</th><th>Customer</th><th>Mobile</th><th>Sale date</th><th>1st paid</th><th>2nd paid</th><th>3rd paid</th><th>Status</th><th>Due</th></tr></thead>
+          <tbody id="pvBody"><tr><td colspan="10" style="color:var(--muted-2)">Service Sync karo (Paid VIN report apne aap aati hai)</td></tr></tbody>
+        </table></div></div>
       </div>
     </section>
 
@@ -1435,7 +1499,8 @@ function dcDateify(el){
     const m=x.split(/[\/.-]/);if(m.length===3&&m[2].length===4)return `${m[2]}-${m[1].padStart(2,'0')}-${m[0].padStart(2,'0')}`;return '';};
   const old=nat.get.call(el);el.type='date';el.removeAttribute('placeholder');
   const t=new Date(),today=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-  el.max=today;
+  const futureOk=/^fv(From|To)$/.test(el.id);   // FSC expiry = future date chahiye
+  if(!futureOk)el.max=today;
   Object.defineProperty(el,'value',{configurable:true,
     get(){const v=nat.get.call(el);return v?v.split('-').reverse().join('/'):'';},
     set(x){nat.set.call(el,toIso(x));}});
@@ -1446,12 +1511,12 @@ function dcDateify(el){
 (function(){
   document.querySelectorAll('input[id$="From"],input[id$="To"]').forEach(el=>{
     const today=dcDateify(el);
-    if(/To$/.test(el.id)&&!el.value)el.value=today;
+    if(/To$/.test(el.id)&&!el.value&&!/^fv/.test(el.id))el.value=today;   // FSC expiry To khaali rahe
   });
-  // From aur To aapas me: From ka max = To, To ka min = From
+  // From aur To aapas me: From ka max = To, To ka min = From  (FSC me today ka cap nahi)
   document.querySelectorAll('input[id$="From"]').forEach(f=>{const t=document.getElementById(f.id.replace(/From$/,'To'));if(!t)return;
     const nat=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
-    const sync=()=>{const fv=nat.get.call(f),tv=nat.get.call(t);t.min=fv||'';f.max=tv||t.max;};
+    const sync=()=>{const fv=nat.get.call(f),tv=nat.get.call(t);t.min=fv||'';f.max=tv||t.max||'';};
     f.addEventListener('change',sync);t.addEventListener('change',sync);setTimeout(sync,0);});
 })();
 </script>
@@ -3490,6 +3555,113 @@ document.getElementById('chkBody').addEventListener('click',e=>{const tr=e.targe
 rowClick('chkTechBody',n=>{document.getElementById('chkTech').value=n;chkRender();});
 rowClick('chkSupBody',n=>{document.getElementById('chkSup').value=n;chkRender();});
 document.querySelector('#svSubtabs .subtab[data-svsub="chk"]').addEventListener('click',chkRender);
+
+/* ================= FSC VIN-wise tracking (PowerBI snapshot — current month) ================= */
+let FV={rows:[],byFsc:[],summary:{}},FV_LOADED=false;
+async function fvLoad(force){
+  if(FV_LOADED&&!force)return;
+  const r=await fetch(API_BASE+'/api/service/fsc-vin').catch(()=>null);
+  FV=r&&r.ok?await r.json():{rows:[],byFsc:[],summary:{}};FV_LOADED=true;
+  const s=FV.summary||{};
+  document.getElementById('fv-veh').textContent=(s.vehicles||0).toLocaleString('en-IN');
+  document.getElementById('fv-veh-f').textContent=`${(s.eligible||0).toLocaleString('en-IN')} FSC eligible`;
+  document.getElementById('fv-pct').textContent=(s.pct||0)+'%';
+  document.getElementById('fv-pct-f').textContent=`${(s.availed||0).toLocaleString('en-IN')} FSC avail ho chuki`;
+  document.getElementById('fv-open').textContent=(s.dueVehicles||0).toLocaleString('en-IN');
+  document.getElementById('fv-open-f').textContent=`${(s.open||0).toLocaleString('en-IN')} FSC avail ho sakti`;
+  document.getElementById('fv-miss').textContent=(s.missed||0).toLocaleString('en-IN');
+  document.getElementById('fvVinPull').textContent=FV.pulledAt?'· Aakhri sync '+new Date(FV.pulledAt).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  // FSC due I-V (sorted I->V)
+  document.getElementById('fvDueBody').innerHTML=(FV.byDue||[]).some(x=>x.n)?FV.byDue.map(x=>`<tr data-d="${x.dueNum}" style="cursor:pointer"><td class="strong">${escH(x.label)}</td><td class="num mono">${x.n.toLocaleString('en-IN')}</td></tr>`).join(''):'<tr><td colspan="2" style="color:var(--muted-2)">Koi FSC due nahi (ya data nahi)</td></tr>';
+  document.getElementById('fvByBody').innerHTML=(FV.byFsc||[]).length?FV.byFsc.map(x=>`<tr><td class="strong">${escH(x.fsc)}</td><td class="num mono">${x.elig.toLocaleString('en-IN')}</td><td class="num mono">${x.avail.toLocaleString('en-IN')}</td><td class="num mono">${x.open.toLocaleString('en-IN')}</td><td class="num mono">${x.missed.toLocaleString('en-IN')}</td><td class="num mono strong">${x.pct}%</td></tr>`).join(''):'<tr><td colspan="6" style="color:var(--muted-2)">FSC VIN data nahi — Service Sync karo</td></tr>';
+  const fm=document.getElementById('fvModel'),cur=fm.value;
+  fm.innerHTML='<option value="">Sab</option>'+[...new Set((FV.rows||[]).map(r=>r.model).filter(Boolean))].sort().map(v=>`<option>${escH(v)}</option>`).join('');fm.value=cur;
+  fvRender();
+}
+const fvToYmd=(s)=>{const m=String(s||'').trim().split(/[\/.-]/);return m.length===3&&m[2].length===4?`${m[2]}-${String(m[1]).padStart(2,'0')}-${String(m[0]).padStart(2,'0')}`:'';};
+function fvRender(){
+  const flt=document.getElementById('fvFilter').value,md=document.getElementById('fvModel').value,q=(document.getElementById('fvSearch').value||'').toLowerCase().trim();
+  const fromY=fvToYmd(document.getElementById('fvFrom').value),toY=fvToYmd(document.getElementById('fvTo').value);
+  let l=(FV.rows||[]).slice();
+  if(flt==='due')l=l.filter(r=>r.dueNum>0);
+  else if(/^d[1-5]$/.test(flt))l=l.filter(r=>r.dueNum===+flt[1]);
+  else if(flt==='done')l=l.filter(r=>r.max>0&&r.avail>=r.max);
+  if(fromY)l=l.filter(r=>r.dueExpYmd&&r.dueExpYmd>=fromY);
+  if(toY)l=l.filter(r=>r.dueExpYmd&&r.dueExpYmd<=toY);
+  if(md)l=l.filter(r=>(r.model||'')===md);
+  if(q)l=l.filter(r=>[r.asset,r.customer,r.mobile].some(v=>String(v||'').toLowerCase().includes(q)));
+  l.sort((a,b)=>(a.dueNum||9)-(b.dueNum||9)||String(a.dueExpYmd).localeCompare(String(b.dueExpYmd)));
+  document.getElementById('fvBody').innerHTML=l.length?l.map(r=>`<tr><td class="mono">${escH(r.asset||'—')}</td><td>${escH(r.model||'—')}</td><td>${escH(r.customer||'—')}</td><td class="mono">${escH(r.mobile||'—')}</td><td class="num mono">${r.max}</td><td class="num mono">${r.avail}</td><td>${r.dueNum?`<span class="pill warn">${escH(r.due)}</span>`:(r.avail>=r.max&&r.max?'<span class="pill go">Saari ho gayi</span>':'—')}</td><td class="mono">${escH(r.dueExp||'—')}</td><td>${escH(r.dueMonthLabel||'—')}</td></tr>`).join('')
+    :'<tr><td colspan="9" style="color:var(--muted-2)">'+((FV.rows||[]).length?'Is filter me koi gaadi nahi':'FSC VIN data nahi — ek baar Service Sync karo')+'</td></tr>';
+  document.getElementById('fv-count').textContent=`${l.length} gaadi`;
+}
+['fvFilter','fvModel','fvFrom','fvTo'].forEach(id=>document.getElementById(id).addEventListener('change',fvRender));
+['fvSearch','fvFrom','fvTo'].forEach(id=>document.getElementById(id).addEventListener('input',fvRender));
+document.getElementById('fvDueBody').addEventListener('click',e=>{const tr=e.target.closest('tr[data-d]');if(!tr)return;document.getElementById('fvFilter').value='d'+tr.dataset.d;fvRender();});
+document.querySelector('#svSubtabs .subtab[data-svsub="fsc"]').addEventListener('click',()=>fvLoad());
+document.getElementById('fvSync').addEventListener('click',async()=>{
+  const b=document.getElementById('fvSync'),o=b.innerHTML,inf=document.getElementById('fvInfo');
+  b.style.pointerEvents='none';b.innerHTML='PowerBI se la rahe… (login window khul sakti hai)';inf.textContent='';
+  try{const r=await fetch(API_BASE+'/api/service/fsc-vin/sync',{method:'POST'});const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+    inf.textContent=`✓ ${j.rows} gaadi aayi`;await fvLoad(true);
+  }catch(e){inf.textContent='⚠ '+e.message+' — (PowerBI login? ⚙ me "Browser dikhao" ON karke ek baar login karo)';}
+  finally{b.style.pointerEvents='';b.innerHTML=o;}
+});
+
+/* ================= Paid VIN-wise tracking (PowerBI snapshot — current month) ================= */
+let PV={rows:[],byDue:[],summary:{}},PV_LOADED=false;
+async function pvLoad(force){
+  if(PV_LOADED&&!force)return;
+  const r=await fetch(API_BASE+'/api/service/paid-vin').catch(()=>null);
+  PV=r&&r.ok?await r.json():{rows:[],byDue:[],summary:{}};PV_LOADED=true;
+  const s=PV.summary||{};
+  document.getElementById('pv-veh').textContent=(s.vehicles||0).toLocaleString('en-IN');
+  document.getElementById('pv-veh-f').textContent=`1st:${(s.paid1||0)} · 2nd:${(s.paid2||0)} · 3rd:${(s.paid3||0)} paid ho chuki`;
+  document.getElementById('pv-due').textContent=(s.yet||0).toLocaleString('en-IN');
+  document.getElementById('pv-due-f').textContent=s.vehicles?`${Math.round((s.yet||0)/s.vehicles*100)}% gaadi`:'inhe bulana hai';
+  document.getElementById('pv-avail').textContent=(s.availed||0).toLocaleString('en-IN');
+  document.getElementById('pv-avail-f').textContent='paid service le li';
+  document.getElementById('pv-exp').textContent=(s.expired||0).toLocaleString('en-IN');
+  document.getElementById('paidVinPull').textContent=PV.pulledAt?'· Aakhri sync '+new Date(PV.pulledAt).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  const pm=document.getElementById('pvModel'),cur=pm.value;
+  pm.innerHTML='<option value="">Sab</option>'+[...new Set((PV.rows||[]).map(r=>r.model).filter(Boolean))].sort().map(v=>`<option>${escH(v)}</option>`).join('');pm.value=cur;
+  // Dikhao dropdown: base states + har exact Due type (Yet To Avail 1st/2nd/3rd, Availed..., Expired...) — sorted
+  const pf=document.getElementById('pvFilter'),pcur=pf.value;
+  const rank=(s)=>/yet/i.test(s)?0:/availed/i.test(s)?1:/expired/i.test(s)?2:3;
+  const numOf=(s)=>/1st|first/i.test(s)?1:/2nd|second/i.test(s)?2:/3rd|third/i.test(s)?3:9;
+  const exact=(PV.byDue||[]).filter(x=>x.due&&x.due!=='—').slice().sort((a,b)=>rank(a.due)-rank(b.due)||numOf(a.due)-numOf(b.due));
+  pf.innerHTML='<option value="yet">Yet to avail (bulana hai)</option><option value="availed">Availed (ho gayi)</option><option value="expired">Expired (nikal gayi)</option><option value="">Saari gaadi</option>'
+    +(exact.length?'<optgroup label="Due type — chhota tod">'+exact.map(x=>`<option value="due:${escH(x.due)}">${escH(x.due)} (${x.n})</option>`).join('')+'</optgroup>':'');
+  pf.value=pcur||'yet';
+  pvRender();
+}
+function pvRender(){
+  const flt=document.getElementById('pvFilter').value,md=document.getElementById('pvModel').value,q=(document.getElementById('pvSearch').value||'').toLowerCase().trim();
+  let l=(PV.rows||[]).slice();
+  if(flt.slice(0,4)==='due:')l=l.filter(r=>r.due===flt.slice(4));
+  else if(flt==='yet'||flt==='availed'||flt==='expired')l=l.filter(r=>r.state===flt);
+  if(md)l=l.filter(r=>(r.model||'')===md);
+  if(q)l=l.filter(r=>[r.asset,r.customer,r.mobile].some(v=>String(v||'').toLowerCase().includes(q)));
+  l.sort((a,b)=>a.num-b.num||a.count-b.count);
+  const pill={yet:'warn',availed:'go',expired:'crit'};
+  document.getElementById('pvBody').innerHTML=l.length?l.map(r=>`<tr><td class="mono">${escH(r.asset||'—')}</td><td>${escH(r.model||'—')}</td><td>${escH(r.customer||'—')}</td><td class="mono">${escH(r.mobile||'—')}</td><td class="mono">${escH(r.saleDate||'—')}</td><td class="mono">${escH(r.paid1||'—')}</td><td class="mono">${escH(r.paid2||'—')}</td><td class="mono">${escH(r.paid3||'—')}</td><td>${escH(r.status||'—')}</td><td>${r.due?`<span class="pill ${pill[r.state]||'mute'}">${escH(r.due)}</span>`:'—'}</td></tr>`).join('')
+    :'<tr><td colspan="10" style="color:var(--muted-2)">'+((PV.rows||[]).length?'Is filter me koi gaadi nahi':'Paid VIN data nahi — ek baar Service Sync karo')+'</td></tr>';
+  document.getElementById('pv-count').textContent=`${l.length} gaadi`;
+}
+['pvFilter','pvModel'].forEach(id=>document.getElementById(id).addEventListener('change',pvRender));
+document.getElementById('pvSearch').addEventListener('input',pvRender);
+document.querySelector('#svSubtabs .subtab[data-svsub="paid"]').addEventListener('click',()=>pvLoad());
+document.getElementById('pvSync').addEventListener('click',async()=>{
+  const b=document.getElementById('pvSync'),o=b.innerHTML,inf=document.getElementById('pvInfo');
+  b.style.pointerEvents='none';b.innerHTML='PowerBI se la rahe… (login window khul sakti hai)';inf.textContent='';
+  try{const r=await fetch(API_BASE+'/api/service/paid-vin/sync',{method:'POST'});const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+    inf.textContent=`✓ ${j.rows} gaadi aayi`;await pvLoad(true);
+  }catch(e){inf.textContent='⚠ '+e.message+' — (PowerBI login? ⚙ me "Browser dikhao" ON karke ek baar login karo)';}
+  finally{b.style.pointerEvents='';b.innerHTML=o;}
+});
+
 document.getElementById('svLoad').addEventListener('click',svLoad);
 ['svSearch'].forEach(id=>document.getElementById(id).addEventListener('input',svRender));
 ['svSup','svSt','svTech','svType','svStat'].forEach(id=>document.getElementById(id).addEventListener('change',svRender));
@@ -3503,7 +3675,7 @@ document.getElementById('svSync').addEventListener('click',async()=>{
   if(dd>15&&!confirm(`${dd} din ek saath — Hero Connect lag karega.\nFast sync ke liye 10–15 din ka gap rakho.\n\nPhir bhi ${dd} din ka sync karein?`))return;
   b.style.pointerEvents='none';b.innerHTML='Hero Connect se la rahe…';
   try{const r=await fetch(API_BASE+'/api/service/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from,to})});const j=await r.json();
-    if(!r.ok||!j.ok)throw new Error(j.error||'fail');document.getElementById('svInfo').textContent=j.empty?`✓ ${from} – ${to}: koi invoice nahi`:`✓ ${j.count} invoice (${j.added} naye, ${j.updated} update)`;await svLoad();}
+    if(!r.ok||!j.ok)throw new Error(j.error||'fail');document.getElementById('svInfo').textContent=j.empty?`✓ ${from} – ${to}: koi invoice nahi`:`✓ ${j.count} invoice (${j.added} naye, ${j.updated} update)`;await svLoad();if(FV_LOADED)fvLoad(true);if(PV_LOADED)pvLoad(true);}
   catch(e){alert('Service sync fail: '+e.message);}finally{b.style.pointerEvents='';b.innerHTML=o;}
 });
 document.querySelectorAll('.nav-item[data-view="service"]').forEach(n=>n.addEventListener('click',svLoad));

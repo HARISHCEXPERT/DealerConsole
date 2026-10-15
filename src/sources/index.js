@@ -449,7 +449,65 @@ const vehicleMaster = {
   },
 };
 
-export const SOURCES = [vsr, purchase, enquiry, partsService, partsCounter, partsPurchase, partsOrder, soq, serviceInvoice, serviceJobs, serviceJobcards, partsMaster, vehicleMaster];
+const fscVin = {
+  name: 'fsc_vin',
+  label: 'Service — FSC VIN tracking (PowerBI)',
+  report: { ...pbi('PBI_FSC_VIN_URL', 'd45c4ab1-794d-4630-958c-c0ef72559f33', 'f4b57acced065ec36c55'), page: 'VIN Wise Service Tracker' },
+  table: 'fsc_vin',
+  mode: 'replace',
+  allSlicers: true,   // scrape se pehle saare slicer 'All' kar do (poora data)
+  group: ['asset'],
+  required: ['asset'],
+  fields: {
+    asset:         ['Asset Number'],
+    model:         'Model',
+    customer:      'Customer Full Name',
+    mobile:        'Customer Mobile Number',
+    maxFsc:        { from: ['Max FSC Count'], type: 'num' },
+    warrantyStart: { from: ['Warranty Start Date'], type: 'date' },
+    fsc1:          { from: ['FSC I Claimed Date'], type: 'date' },
+    fsc2:          { from: ['FSC II Claimed Date'], type: 'date' },
+    fsc3:          { from: ['FSC III Claimed Date'], type: 'date' },
+    fsc4:          { from: ['FSC IV Claimed Date'], type: 'date' },
+    fsc5:          { from: ['FSC V Claimed Date'], type: 'date' },
+    paidAmc:       'Latest Paid/AMC Availed',
+    joyrideExp:    { from: ['Joyride Expiry Date'], type: 'date' },
+    fsc1Exp:       { from: ['FSC I Expiry Date'], type: 'date' },
+    fsc2Exp:       { from: ['FSC II Expiry Date'], type: 'date' },
+    fsc3Exp:       { from: ['FSC III Expiry Date'], type: 'date' },
+    fsc4Exp:       { from: ['FSC IV Expiry Date'], type: 'date' },
+    fsc5Exp:       { from: ['FSC V Expiry Date'], type: 'date' },
+    odometer:      { from: ['Odometer Reading'], type: 'num' },
+    monthName:     'Month Name',
+  },
+  indexes: ['asset'],
+};
+
+const paidVin = {
+  name: 'paid_vin',
+  label: 'Service — Paid VIN tracking (PowerBI)',
+  report: { ...pbi('PBI_PAID_VIN_URL', 'd45c4ab1-794d-4630-958c-c0ef72559f33', 'c79f8760084c65a2161b'), page: 'Paid Redemption Vin Wise' },
+  table: 'paid_vin',
+  mode: 'replace',
+  allSlicers: true,   // scrape se pehle saare slicer 'All' kar do (poora data)
+  group: ['asset'],
+  required: ['asset'],
+  fields: {
+    asset:    ['Asset Number'],
+    model:    'Model',
+    customer: 'Customer Full Name',
+    mobile:   'Customer Mobile Number',
+    saleDate: { from: ['Vehicle Sale Date'], type: 'date' },
+    paid1:    { from: ['First Paid Service Date'], type: 'date' },
+    paid2:    { from: ['Second Paid Service Date'], type: 'date' },
+    paid3:    { from: ['Third Paid Service Date'], type: 'date' },
+    status:   'Status',
+    dueType:  'Due Service Type',
+  },
+  indexes: ['asset'],
+};
+
+export const SOURCES = [vsr, purchase, enquiry, partsService, partsCounter, partsPurchase, partsOrder, soq, serviceInvoice, serviceJobs, serviceJobcards, fscVin, paidVin, partsMaster, vehicleMaster];
 export const source = (name) => {
   const s = SOURCES.find((x) => x.name === name);
   if (!s) throw new Error(`unknown source: ${name}`);

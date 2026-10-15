@@ -12,7 +12,62 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const VSR_URL = process.env.PBI_VSR_URL ||
   'https://app.powerbi.com/groups/me/reports/50821d3f-3f45-4555-8b27-5b79a95972b7/ReportSection?ctid=f31980c8-b6a6-482d-a0d5-0f73c49dd4e9&experience=power-bi';
 
-export async function scrapeVSR(page, downloadDir, dateRange = null, reportUrl = null) {
+// Left "Pages" panel me naam se page kholo (URL section kabhi switch nahi karta — ye pakka hai).
+async function gotoPageByName(page, name, tag = 'pbi') {
+  if (!name) return false;
+  try {
+    const clicked = await page.evaluate((nm) => {
+      const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const want = norm(nm);
+      // naya PowerBI pages-pane (Angular Material) + purana — dono ke candidate
+      const items = [...document.querySelectorAll(
+        '[class*="item__primary-text"], .itemName, mat-list-item, [class*="pageButton"], ' +
+        'button[role="tab"], [role="tab"], nav [role="button"], .navigation-wrapper button, cdkvirtualscrollviewport [role="button"]'
+      )].filter((e) => e.offsetParent !== null);
+      let el = items.find((e) => norm(e.textContent) === want)
+            || items.find((e) => norm(e.textContent).includes(want))
+            || items.find((e) => want.includes(norm(e.textContent)) && norm(e.textContent).length > 6);
+      if (el) { (el.closest('button, a, mat-list-item, [role="tab"], [role="button"], li') || el).click(); return norm(el.textContent); }
+      return null;
+    }, name);
+    if (clicked) { console.log(`  [${tag}] page -> "${clicked}"`); await sleep(3500); return true; }
+    console.log(`  [${tag}] page "${name}" pages-panel me nahi mila — URL section pe hi`);
+  } catch (e) { console.log(`  [${tag}] gotoPage skip: ${e.message}`); }
+  return false;
+}
+
+// Saare dropdown slicer (Year / Month / Model / MAX FSC Count...) ko "All" karo — poora data aaye.
+// Jo pehle se "All" hai use chhedte nahi (safe). Fail ho to crash nahi — best effort.
+async function setSlicersAll(page, tag = 'pbi') {
+  try {
+    // DOM (user ke screenshot se): div.slicer-dropdown-menu  role=combobox  (naam = field ka naam)
+    const boxes = await page.$$('.slicer-dropdown-menu, .slicerContainer [role="combobox"], .slicer-dropdown-content');
+    let changed = 0, already = 0;
+    for (const b of boxes) {
+      const cur = ((await page.evaluate((el) => el.textContent || '', b)) || '').replace(/\s+/g, ' ').trim();
+      if (/\ball\b/i.test(cur)) { already++; continue; }                 // pehle se All -> chhodo
+      try {
+        await b.click(); await sleep(900);                              // dropdown kholo
+        const ok = await page.evaluate(() => {
+          const items = [...document.querySelectorAll(
+            '.slicer-dropdown-popup [role="option"], .slicerItemContainer, [role="menuitemcheckbox"], [role="option"], .slicerText'
+          )].filter((i) => i.offsetParent !== null);
+          const all = items.find((i) => /^\s*(select all|all)\s*$/i.test((i.textContent || '').trim()));
+          if (all) { (all.closest('[role="option"], .slicerItemContainer') || all).click(); return true; }
+          return false;
+        });
+        await sleep(800);
+        await page.keyboard.press('Escape').catch(() => {});            // popup band
+        await sleep(400);
+        if (ok) changed++;
+      } catch { await page.keyboard.press('Escape').catch(() => {}); }
+    }
+    console.log(`  [${tag}] slicers -> All: ${changed} set, ${already} pehle se All`);
+    if (changed) await sleep(2500);                                     // naye filter pe table re-render
+  } catch (e) { console.log(`  [${tag}] setSlicersAll skip: ${e.message}`); }
+}
+
+export async function scrapeVSR(page, downloadDir, dateRange = null, reportUrl = null, opts = {}) {
   fs.mkdirSync(downloadDir, { recursive: true });
   const client = await page.target().createCDPSession();
   await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
@@ -28,6 +83,11 @@ export async function scrapeVSR(page, downloadDir, dateRange = null, reportUrl =
   } catch {}
 
   // PowerBI SPA kabhi networkidle nahi hota -> domcontentloaded + table render ka poll
+  // ZAROORI: ek hi report ke alag-alag PAGE (FSC vs Paid = same reportId, alag ReportSection) —
+  // seedha goto karne pe PowerBI SPA page switch nahi karta (purana page khula rehta hai, galat data).
+  // isliye pehle about:blank -> fir real URL (cross-document reload) taaki sahi ReportSection khule.
+  await page.goto('about:blank').catch(() => {});
+  await sleep(400);
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 90000 });
 
   // report/table render hone ka intezaar (spinner khatam + data rows aaye) — max 90s
@@ -45,6 +105,12 @@ export async function scrapeVSR(page, downloadDir, dateRange = null, reportUrl =
   }
   await page.screenshot({ path: 'screenshots/vsr-loaded.png', fullPage: true }).catch(()=>{});
   if (!rendered) throw new Error('Report/table render nahi hua (90s) — screenshots/vsr-loaded.png dekh (spinner? blank? block?)');
+
+  // ---- sahi PAGE pe jao (naam se) — URL section bharosemand nahi ----
+  if (opts.pageName) await gotoPageByName(page, opts.pageName, 'pbi');
+
+  // ---- SLICERS -> ALL (FSC/Paid VIN jaise snapshot reports) — poora data ----
+  if (opts.allSlicers) await setSlicersAll(page, 'pbi');
 
   // ---- DATE SET — verify ke saath (dateSlicer.js). Box na mile / set na ho to ERROR, galat data nahi ----
   let appliedRange = null;

@@ -46,7 +46,12 @@ export async function pullServiceInvoices(range) {
   // USI date range ka PowerBI JobCards (service type / supervisor / odometer) — chupchaap, alag se dikhta nahi.
   // Fail ho to bhi invoice sync safal hi maana jaata hai.
   try {
-    if (!pullBusy()) { const jc = await pullReports(['service_jc'], range); const x = jc?.results?.service_jc; log(`[service] + jobcards: ${x?.error ? 'FAIL ' + x.error : 'ok'}`); }
+    if (!pullBusy()) {
+      // service_jc date-range se; fsc_vin / paid_vin poore (snapshot, date filter nahi) — client ko ye background me
+      const jc = await pullReports(['service_jc', 'fsc_vin', 'paid_vin'], { __each: { service_jc: range, fsc_vin: null, paid_vin: null } });
+      const r = jc?.results || {};
+      log(`[service] + jobcards: ${r.service_jc?.error ? 'FAIL ' + r.service_jc.error : 'ok'} · fsc_vin: ${r.fsc_vin?.error ? 'FAIL' : 'ok'} · paid_vin: ${r.paid_vin?.error ? 'FAIL' : 'ok'}`);
+    }
     else log('[service] + jobcards: PowerBI busy — agli baar');
   } catch (e) { log('[service] + jobcards FAIL: ' + e.message); }
   finally { busy = false; }

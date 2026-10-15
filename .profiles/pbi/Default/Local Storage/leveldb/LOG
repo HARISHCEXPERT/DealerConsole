@@ -1,3 +1,5 @@
-2026/10/14-11:54:33.182 25f0 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Local Storage\leveldb/MANIFEST-000001
-2026/10/14-11:54:33.318 25f0 Recovering log #64
-2026/10/14-11:54:33.408 25f0 Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Local Storage\leveldb/000064.log 
+2026/10/15-12:36:40.271 2304 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\pbi\Default\Local Storage\leveldb/MANIFEST-000001
+2026/10/15-12:36:40.653 2304 Recovering log #85
+2026/10/15-12:36:41.067 2304 Level-0 table #88: started
+2026/10/15-12:36:41.596 2304 Level-0 table #88: 15082 bytes OK
+2026/10/15-12:36:41.700 2304 Delete type=0 #85

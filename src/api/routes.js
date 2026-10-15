@@ -153,6 +153,94 @@ api.post('/service/sync', h(async (req, res) => {
   const st = await pullServiceInvoices(range);
   res.json({ ok: true, count: got(st), added: st.added, updated: st.updated, empty: !!st.empty, range });
 }));
+// ---- FSC VIN-wise tracking (PowerBI snapshot) ----
+// har VIN: Max FSC Count eligible, jitni claimed date hai wo availed; baaki yet-to-avail.
+// yet-to-avail me: expiry nikli = nikal gayi (missed), warna abhi avail ho sakti (open)
+api.get('/service/fsc-vin', h(async (_req, res) => {
+  if (!tableExists('fsc_vin')) return res.json({ rows: [], summary: {}, byFsc: [], byDue: [], months: [], pulledAt: null });
+  const d = db();
+  const all = d.prepare('SELECT * FROM fsc_vin').all();
+  const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+  const R = ['I', 'II', 'III', 'IV', 'V'];
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monKey = (ymd) => (ymd && /^\d{4}-\d{2}/.test(ymd)) ? ymd.slice(0, 7) : '';
+  const monLbl = (k) => k ? `${MON[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}` : '';
+  let totalElig = 0, totalAvail = 0, totalOpen = 0, totalMissed = 0;
+  const perN = R.map(() => ({ elig: 0, avail: 0, open: 0, missed: 0 }));
+  const rows = all.map((v) => {
+    const max = Math.max(0, Math.min(5, Math.round(v.maxFsc || 0)));
+    let avail = 0, open = 0, missed = 0, dueNum = 0, dueExp = '';
+    for (let i = 1; i <= max; i++) {
+      const claimed = v['fsc' + i], exp = v['fsc' + i + 'Exp'];
+      perN[i - 1].elig++;
+      if (claimed) { avail++; perN[i - 1].avail++; }
+      else if (exp && exp < today) { missed++; perN[i - 1].missed++; }
+      else { open++; perN[i - 1].open++; if (!dueNum) { dueNum = i; dueExp = exp || ''; } }   // sabse pehli jo abhi avail ho sakti = due
+    }
+    totalElig += max; totalAvail += avail; totalOpen += open; totalMissed += missed;
+    const dueLabel = dueNum ? `FSC ${R[dueNum - 1]} due` : (max && avail >= max ? 'Saari ho gayi' : missed ? 'Sab nikal gayi' : '—');
+    return { asset: v.asset, model: v.model, customer: v.customer, mobile: v.mobile, max, avail, open, missed,
+      pct: max ? Math.round(avail / max * 100) : 0,
+      dueNum, due: dueLabel, dueExp: toDMY(dueExp), dueExpYmd: dueExp || '', dueMonth: monKey(dueExp), dueMonthLabel: monLbl(monKey(dueExp)),
+      warrantyStart: toDMY(v.warrantyStart || ''), paidAmc: v.paidAmc || '' };
+  });
+  // FSC I due .. V due (sorted I->V), + months (expiry) for filter
+  const byDue = R.map((n, i) => ({ dueNum: i + 1, label: `FSC ${n} due`, n: rows.filter((r) => r.dueNum === i + 1).length }));
+  const mset = {}; for (const r of rows) if (r.dueNum && r.dueMonth) mset[r.dueMonth] = (mset[r.dueMonth] || 0) + 1;
+  const months = Object.keys(mset).sort().map((k) => ({ key: k, label: monLbl(k), n: mset[k] }));
+  res.json({
+    rows, pulledAt: (lastRun('fsc_vin') || {}).finished_at || null,
+    byFsc: R.map((n, i) => ({ fsc: 'FSC ' + n, ...perN[i], pct: perN[i].elig ? Math.round(perN[i].avail / perN[i].elig * 100) : 0 })),
+    byDue, months,
+    summary: { vehicles: all.length, eligible: totalElig, availed: totalAvail, open: totalOpen, missed: totalMissed,
+      pct: totalElig ? Math.round(totalAvail / totalElig * 100) : 0, dueVehicles: rows.filter((r) => r.dueNum > 0).length },
+  });
+}));
+
+// ---- Paid VIN-wise tracking (PowerBI snapshot) ----
+api.get('/service/paid-vin', h(async (_req, res) => {
+  if (!tableExists('paid_vin')) return res.json({ rows: [], summary: {}, byDue: [], pulledAt: null });
+  const d = db();
+  // sirf wo gaadi jinka Due Service Type hai (blank "—" wali, jinme koi paid due nahi, count/list me nahi aayengi)
+  const all = d.prepare('SELECT * FROM paid_vin').all().filter((v) => { const t = String(v.dueType || '').trim(); return t && t !== '-'; });
+  // "Due Service Type" khud state batata hai: Availed / Yet To Avail / Expired  +  1st/2nd/3rd
+  const parseDue = (s) => {
+    const t = String(s || '').trim();
+    const state = /^availed/i.test(t) ? 'availed' : /yet\s*to\s*avail/i.test(t) ? 'yet' : /^expired/i.test(t) ? 'expired' : '';
+    const num = /\b1st\b|\bfirst\b/i.test(t) ? 1 : /\b2nd\b|\bsecond\b/i.test(t) ? 2 : /\b3rd\b|\bthird\b/i.test(t) ? 3 : 0;
+    return { state, num };
+  };
+  const rows = all.map((v) => {
+    const p = parseDue(v.dueType);
+    return { asset: v.asset, model: v.model, customer: v.customer, mobile: v.mobile,
+      saleDate: toDMY(v.saleDate || ''), paid1: toDMY(v.paid1 || ''), paid2: toDMY(v.paid2 || ''), paid3: toDMY(v.paid3 || ''),
+      count: [v.paid1, v.paid2, v.paid3].filter(Boolean).length, status: v.status || '', due: v.dueType || '',
+      state: p.state, num: p.num };
+  });
+  const cnt = (st) => rows.filter((r) => r.state === st).length;
+  const byDue = {}; for (const r of rows) { const k = r.due || '—'; byDue[k] = (byDue[k] || 0) + 1; }
+  res.json({
+    rows, pulledAt: (lastRun('paid_vin') || {}).finished_at || null,
+    byDue: Object.entries(byDue).map(([due, n]) => ({ due, n })).sort((a, b) => b.n - a.n),
+    summary: { vehicles: all.length, yet: cnt('yet'), availed: cnt('availed'), expired: cnt('expired'),
+      paid1: rows.filter((r) => r.paid1).length, paid2: rows.filter((r) => r.paid2).length, paid3: rows.filter((r) => r.paid3).length },
+  });
+}));
+
+// ---- PowerBI se seedha laao (snapshot — date range nahi) ----
+api.post('/service/fsc-vin/sync', h(async (_req, res) => {
+  const out = await pullReports(['fsc_vin'], null);
+  const r = out.results?.fsc_vin || {};
+  if (r.error) throw new Error(r.error);
+  res.json({ ok: true, rows: (r.added || 0) + (r.updated || 0) + (r.replaced || 0), st: r });
+}));
+api.post('/service/paid-vin/sync', h(async (_req, res) => {
+  const out = await pullReports(['paid_vin'], null);
+  const r = out.results?.paid_vin || {};
+  if (r.error) throw new Error(r.error);
+  res.json({ ok: true, rows: (r.added || 0) + (r.updated || 0) + (r.replaced || 0), st: r });
+}));
+
 api.get('/service/invoices', h(async (req, res) => {
   if (!tableExists('service_invoices')) return res.json({ rows: [], summary: {}, pulledAt: null });
   const rows = rowsOf(req, 'service_invoices', 'invoiceDate', 'invoiceDate DESC, invoiceNo DESC');

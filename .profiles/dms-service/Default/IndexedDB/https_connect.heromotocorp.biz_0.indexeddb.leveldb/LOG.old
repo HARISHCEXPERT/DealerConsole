@@ -1,25 +1,5 @@
-2026/10/11-12:01:58.951 2104 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\dms-service\Default\IndexedDB\https_connect.heromotocorp.biz_0.indexeddb.leveldb/MANIFEST-000001
-2026/10/11-12:01:58.953 2104 Recovering log #491
-2026/10/11-12:01:58.953 2104 Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\dms-service\Default\IndexedDB\https_connect.heromotocorp.biz_0.indexeddb.leveldb/000491.log 
-2026/10/11-12:01:58.954 2104 Delete type=2 #489
-2026/10/11-12:02:06.708 b64 Level-0 table #496: started
-2026/10/11-12:02:06.736 b64 Level-0 table #496: 580 bytes OK
-2026/10/11-12:02:06.740 b64 Delete type=0 #491
-2026/10/11-12:02:06.741 b64 Manual compaction at level-0 from '\x00\x97\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x98\x00\x00\x00' @ 0 : 0; will stop at '\x00\x97\x00\x00\x05' @ 2843 : 1
-2026/10/11-12:02:06.741 b64 Compacting 1@0 + 1@1 files
-2026/10/11-12:02:06.764 b64 Generated table #497@0: 174 keys, 4893 bytes
-2026/10/11-12:02:06.764 b64 Compacted 1@0 + 1@1 files => 4893 bytes
-2026/10/11-12:02:06.774 b64 compacted to: files[ 0 1 1 0 0 0 0 ]
-2026/10/11-12:02:06.775 b64 Delete type=2 #496
-2026/10/11-12:02:06.775 b64 Manual compaction at level-0 from '\x00\x97\x00\x00\x05' @ 2843 : 1 .. '\x00\x98\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/10/11-12:02:09.169 b64 Level-0 table #499: started
-2026/10/11-12:02:09.197 b64 Level-0 table #499: 587 bytes OK
-2026/10/11-12:02:09.202 b64 Delete type=2 #493
-2026/10/11-12:02:09.202 b64 Delete type=0 #495
-2026/10/11-12:02:09.203 b64 Manual compaction at level-0 from '\x00\x98\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x99\x00\x00\x00' @ 0 : 0; will stop at '\x00\x98\x00\x00\x05' @ 2862 : 1
-2026/10/11-12:02:09.203 b64 Compacting 1@0 + 1@1 files
-2026/10/11-12:02:09.238 b64 Generated table #500@0: 175 keys, 4899 bytes
-2026/10/11-12:02:09.238 b64 Compacted 1@0 + 1@1 files => 4899 bytes
-2026/10/11-12:02:09.247 b64 compacted to: files[ 0 1 1 0 0 0 0 ]
-2026/10/11-12:02:09.247 b64 Delete type=2 #499
-2026/10/11-12:02:09.248 b64 Manual compaction at level-0 from '\x00\x98\x00\x00\x05' @ 2862 : 1 .. '\x00\x99\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/10/15-11:37:30.946 55d0 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\dms-service\Default\IndexedDB\https_connect.heromotocorp.biz_0.indexeddb.leveldb/MANIFEST-000001
+2026/10/15-11:37:30.947 55d0 Recovering log #509
+2026/10/15-11:37:30.948 55d0 Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\dms-service\Default\IndexedDB\https_connect.heromotocorp.biz_0.indexeddb.leveldb/000509.log 
+2026/10/15-11:37:30.949 55d0 Delete type=2 #507
+2026/10/15-11:37:35.203 55d0 Manual compaction at level-0 from '\x00\x9e\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x9f\x00\x00\x00' @ 0 : 0; will stop at (end)
