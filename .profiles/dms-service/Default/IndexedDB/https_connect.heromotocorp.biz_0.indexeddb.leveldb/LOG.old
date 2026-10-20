@@ -1,5 +1,0 @@
-2026/10/15-11:37:30.946 55d0 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\dms-service\Default\IndexedDB\https_connect.heromotocorp.biz_0.indexeddb.leveldb/MANIFEST-000001
-2026/10/15-11:37:30.947 55d0 Recovering log #509
-2026/10/15-11:37:30.948 55d0 Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\dms-service\Default\IndexedDB\https_connect.heromotocorp.biz_0.indexeddb.leveldb/000509.log 
-2026/10/15-11:37:30.949 55d0 Delete type=2 #507
-2026/10/15-11:37:35.203 55d0 Manual compaction at level-0 from '\x00\x9e\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x9f\x00\x00\x00' @ 0 : 0; will stop at (end)

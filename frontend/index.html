@@ -42,6 +42,14 @@
   }
   ::selection{background:rgba(76,194,224,.28)}
 
+  /* ---------- SCROLLBAR (console jaisa — dark, patla) ---------- */
+  *{scrollbar-width:thin;scrollbar-color:#39424F transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#39424F;border:2px solid transparent;background-clip:padding-box;border-radius:10px}
+  ::-webkit-scrollbar-thumb:hover{background:#4C596A}
+  ::-webkit-scrollbar-corner{background:transparent}
+
   /* ---------- SIDEBAR ---------- */
   .sidebar{
     width:var(--nav-w);
@@ -325,6 +333,25 @@
   #drill .dr-stat span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
   #drill .dr-split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
   @media(max-width:800px){#drill .dr-stats{grid-template-columns:1fr 1fr}#drill .dr-split{grid-template-columns:1fr}}
+  /* ---------- SAR grid ---------- */
+  #sarGrid table{border-collapse:collapse;width:100%;font-size:12.5px}
+  #sarGrid th,#sarGrid td{border:1px solid var(--line);padding:4px 6px;text-align:right;white-space:nowrap}
+  #sarGrid th{background:var(--panel-2);color:var(--muted);font-weight:600;position:sticky;top:0;z-index:2}
+  #sarGrid td.lbl,#sarGrid th.lbl{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1;min-width:230px;max-width:230px;white-space:normal}
+  #sarGrid th.lbl{z-index:3}
+  #sarGrid tr.sec td{background:var(--panel-3);color:var(--text);font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
+  #sarGrid tr.tot td{background:var(--panel-2);font-weight:700}
+  #sarGrid tr.res td{font-weight:700}
+  #sarGrid td.q{background:rgba(124,147,255,.06)}
+  #sarGrid td.ytd{background:rgba(76,194,224,.08);font-weight:600}
+  #sarGrid input{width:84px;background:rgba(255,255,255,.015);border:1px solid var(--line-soft);color:var(--text);text-align:right;font-family:var(--mono);font-size:12.5px;padding:2px 4px;border-radius:5px}
+  #sarGrid input:hover{border-color:var(--line)}
+  #sarGrid input:focus{outline:none;border-color:var(--brand);background:var(--ink)}
+  #sarGrid input.auto{color:var(--brand);background:transparent;border-color:transparent}
+  #sarGrid input.auto:hover{border-color:var(--line)}
+  /* SAR expense modal */
+  #sarGrid .dot{color:var(--brand);margin-right:4px}
+  #sarGrid .pos{color:var(--go)} #sarGrid .neg{color:var(--crit)}
 </style>
 <script src="/vendor/xlsx.full.min.js"></script>
 <script>window.XLSX||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>')</script>
@@ -367,6 +394,10 @@
     <div class="nav-item" data-view="khaata">
       <svg viewBox="0 0 24 24"><path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
       Khaata (Party)
+    </div>
+    <div class="nav-item" data-view="sar">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 5-6"/></svg>
+      SAR (Workshop P&L)
     </div>
 
     <div class="nav-label">Automation</div>
@@ -1347,6 +1378,27 @@
       </div>
     </section>
 
+    <section class="view" id="view-sar">
+      <div class="filters">
+        <div class="fld"><label>Financial Year</label><select id="sarFY"></select></div>
+        <div class="fld"><label>Mahina</label><select id="sarMon"></select></div>
+        <span class="mono" id="sarInfo" style="color:var(--muted);align-self:center"></span>
+        <div style="margin-left:auto;align-self:center;display:flex;gap:8px">
+          <button class="xbtn" id="sarYearBtn">📅 Saal bhar</button>
+          <button class="xbtn" id="sarPdf">PDF</button>
+          <button class="xbtn" id="sarExport">Excel</button>
+        </div>
+      </div>
+      <div class="cluster">
+        <div class="gauge info"><div class="gauge-eyebrow" id="sar-rev-eye">💵 Kamai</div><div class="gauge-val" id="sar-rev" style="font-size:21px">—</div><div class="gauge-foot">workshop revenue</div></div>
+        <div class="gauge warn"><div class="gauge-eyebrow" id="sar-exp-eye">💸 Kharcha</div><div class="gauge-val" id="sar-exp" style="font-size:21px">—</div><div class="gauge-foot">saare expenses + rent</div></div>
+        <div class="gauge go" id="sar-plCard"><div class="gauge-eyebrow" id="sar-pl-eye">✅ Faayda (YTD)</div><div class="gauge-val" id="sar-pl" style="font-size:21px">—</div><div class="gauge-foot">kamai − kharcha</div></div>
+        <div class="gauge brand"><div class="gauge-eyebrow">📊 SAR %</div><div class="gauge-val" id="sar-pct">—</div><div class="gauge-foot" id="sar-pct-foot">100%+ = faayda · 100% se kam = nuksan</div></div>
+      </div>
+      <div class="hint" style="margin:0 0 14px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><span>Goal: workshop ka <b>revenue − kharcha ≥ 0</b> (SAR ≥ 100%). <span style="color:var(--brand)">●</span> wali revenue lines <b>DC se apne aap</b> aati hain (edit kar ke override kar sakte ho; khaali karo to wapas auto). Baaki aur saare <b>kharche khud bharo</b> (Tally/accounts se). Har mahine ka cell edit hota hai, Quarter/YTD apne aap.</span></div>
+      <div class="panel" style="overflow:auto"><div id="sarGrid" style="min-width:100%"><div style="padding:24px;color:var(--muted-2)">Load ho raha…</div></div></div>
+    </section>
+
     <section class="view" id="view-auto">
       <div class="subtabs" id="autoSubtabs">
         <button class="subtab active" data-asub="bill">🧾 Billing</button>
@@ -2232,7 +2284,7 @@ document.getElementById('ptFilter').addEventListener('change',renderPtStock);
 (async()=>{const m=await ptMaster();if(Object.keys(m).length)ptLoad();})();
 
 /* ---------- NAV ROUTING ---------- */
-const titles={auto:"Automation — Billing",dashboard:"Dashboard",sale:"Sale",service:"Service",parts:"Parts",misc:"Misc — Warranty & FSC",khaata:"Khaata — Party statement + DMS milaan",master:"Master — Vehicle & Parts"};
+const titles={auto:"Automation — Billing",dashboard:"Dashboard",sale:"Sale",service:"Service",parts:"Parts",misc:"Misc — Warranty & FSC",khaata:"Khaata — Party statement + DMS milaan",sar:"SAR — Workshop Service Absorption Ratio (P&L)",master:"Master — Vehicle & Parts"};
 document.querySelectorAll('.nav-item').forEach(item=>{
   item.addEventListener('click',()=>{
     const v=item.dataset.view;
@@ -3679,6 +3731,157 @@ document.getElementById('svSync').addEventListener('click',async()=>{
   catch(e){alert('Service sync fail: '+e.message);}finally{b.style.pointerEvents='';b.innerHTML=o;}
 });
 document.querySelectorAll('.nav-item[data-view="service"]').forEach(n=>n.addEventListener('click',svLoad));
+
+/* ================= SAR — Workshop Service Absorption Ratio (P&L) ================= */
+let SARD=null;
+const sarFYnow=()=>{const t=new Date();return (t.getMonth()+1)>=4?t.getFullYear():t.getFullYear()-1;};
+const sarFmt=v=>Math.round(Number(v)||0).toLocaleString('en-IN');
+const sarQ=(a,qi)=>(+a[qi*3]||0)+(+a[qi*3+1]||0)+(+a[qi*3+2]||0);
+const sarYTD=a=>a.reduce((s,x)=>s+(+x||0),0);
+function sarLineMap(){const m={};for(const r of SARD.revenue)m[r.k]=r;for(const r of SARD.expense)m[r.k]=r;m.rentWorkshop={k:'rentWorkshop',values:SARD.rent};return m;}
+function sarCompute(){
+  const Z=()=>Array(12).fill(0);
+  const rev=Z(),exp=Z(),nonop=Z();
+  for(const r of SARD.revenue)for(let i=0;i<12;i++)rev[i]+=+r.values[i]||0;
+  for(const r of SARD.expense)for(let i=0;i<12;i++)exp[i]+=+r.values[i]||0;
+  const nonSet=new Set(SARD.nonOp||[]);
+  for(const r of SARD.expense)if(nonSet.has(r.k))for(let i=0;i<12;i++)nonop[i]+=+r.values[i]||0;
+  const rent=SARD.rent.map(x=>+x||0);
+  const sal=(SARD.expense.find(e=>e.k==='salary')||{values:Z()}).values.map(x=>+x||0);
+  return {rev,exp,nonop,rent,sal};
+}
+async function sarLoad(fy){
+  const sel=document.getElementById('sarFY');
+  const r=await fetch(API_BASE+'/api/sar'+(fy?`?fy=${fy}`:'')).catch(()=>null);
+  if(!r||!r.ok){document.getElementById('sarGrid').innerHTML='<div style="padding:24px;color:var(--crit)">SAR load nahi hua</div>';return;}
+  SARD=await r.json();
+  if(!sel.options.length){const now=sarFYnow();for(let y=now;y>=now-3;y--){const o=document.createElement('option');o.value=y;o.textContent=`${y}-${String((y+1)%100).padStart(2,'0')}`;sel.appendChild(o);}}
+  sel.value=SARD.fy;
+  const ms=document.getElementById('sarMon');
+  if(ms.options.length!==12){ms.innerHTML=SARD.months.map((m,i)=>`<option value="${i}">${m} ${SARD.fyLabel}</option>`).join('');
+    const now=new Date();let mi=(now.getMonth()+1)-4;if(mi<0)mi+=12;ms.value=mi;}
+  sarRender();
+}
+let sarMode='month';
+function sarRender(){ if(!SARD)return; if(sarMode==='year')sarRenderYear(); else sarRenderMonth(); sarCards(); }
+const sarPc=(n,d)=>d?Math.round(n/d*1000)/10:0;
+
+function sarRenderMonth(){
+  const m=+document.getElementById('sarMon').value||0; const C=sarCompute();
+  let h='<table style="max-width:700px"><tbody>';
+  h+=`<tr class="sec"><td class="lbl">Revenue (₹)</td><td>${escH(SARD.months[m])} ${SARD.fyLabel}</td></tr>`;
+  for(const r of SARD.revenue){ if(!r.auto && !(+r.values[m]>0))continue;      // detailed: jo bhara wohi (auto hamesha)
+    h+=`<tr ${r.auto?`data-line="${r.k}" style="cursor:pointer"`:''}><td class="lbl">${r.auto?'<span class="dot">●</span>':''}${escH(r.label)}${r.auto?' <span style="color:var(--muted-2)">›</span>':''}</td><td>${sarFmt(r.values[m])}</td></tr>`;}
+  h+=`<tr class="tot"><td class="lbl">Total Gross Revenue</td><td>${sarFmt(C.rev[m])}</td></tr>`;
+  h+=`<tr class="sec"><td class="lbl">Expenses (₹) — yahin bharo</td><td></td></tr>`;
+  for(const e of SARD.expense)h+=`<tr><td class="lbl">${escH(e.label)}</td><td><input data-k="${e.k}" data-m="${m}" value="${Math.round(+e.values[m]||0)||''}" inputmode="numeric"></td></tr>`;
+  h+=`<tr><td class="lbl">Rent for Workshop (agar paid)</td><td><input data-k="rentWorkshop" data-m="${m}" value="${Math.round(+SARD.rent[m]||0)||''}" inputmode="numeric"></td></tr>`;
+  h+=`<tr class="tot"><td class="lbl">Total Expenses (+ rent)</td><td>${sarFmt(C.exp[m]+C.rent[m])}</td></tr>`;
+  const den=C.exp[m]+C.rent[m], pl=C.rev[m]-den, sarp=sarPc(C.rev[m],den), opDen=C.exp[m]-C.nonop[m];
+  h+=`<tr class="sec"><td class="lbl">Result</td><td></td></tr>`;
+  h+=`<tr class="res"><td class="lbl">${pl>=0?'Faayda ✅':'Nuksan 🔻'}</td><td class="${pl>=0?'pos':'neg'}" style="font-size:15px">${sarFmt(Math.abs(pl))}</td></tr>`;
+  h+=`<tr class="res"><td class="lbl">SAR %</td><td class="${sarp>=100?'pos':'neg'}">${den?sarp+'%':'—'}</td></tr>`;
+  h+=`<tr class="res"><td class="lbl">Operating SAR (partner rem + dep + byaj hata ke)</td><td class="${opDen&&C.rev[m]/opDen>=1?'pos':'neg'}">${opDen?sarPc(C.rev[m],opDen)+'%':'—'}</td></tr>`;
+  h+='</tbody></table>';
+  document.getElementById('sarGrid').innerHTML=h;
+}
+function sarRenderYear(){
+  const M=SARD.months, monCols=[...Array(12).keys()], C=sarCompute();
+  let head='<tr><th class="lbl">Particulars (₹)</th>';
+  for(const i of monCols)head+=`<th>${M[i]}</th>`;
+  head+='<th class="q">Q1</th><th class="q">Q2</th><th class="q">Q3</th><th class="q">Q4</th><th class="ytd">YTD</th></tr>';
+  const qytd=a=>{let s='';for(let qi=0;qi<4;qi++)s+=`<td class="q">${sarFmt(sarQ(a,qi))}</td>`;s+=`<td class="ytd">${sarFmt(sarYTD(a))}</td>`;return s;};
+  const dispRow=(line)=>{let s=`<td class="lbl">${line.auto?'<span class="dot">●</span>':''}${escH(line.label)}</td>`;
+    for(const i of monCols)s+=`<td>${sarFmt(line.values[i])}</td>`;s+=qytd(line.values);return s;};
+  let body=`<tr class="sec"><td class="lbl" colspan="18">Workshop Revenue</td></tr>`;
+  for(const r of SARD.revenue)body+=`<tr>${dispRow(r)}</tr>`;
+  body+=`<tr class="tot"><td class="lbl">Total Gross Revenue</td>${monCols.map(i=>`<td>${sarFmt(C.rev[i])}</td>`).join('')}${qytd(C.rev)}</tr>`;
+  body+=`<tr class="sec"><td class="lbl" colspan="18">Workshop Expenses</td></tr>`;
+  for(const e of SARD.expense)body+=`<tr>${dispRow(e)}</tr>`;
+  body+=`<tr><td class="lbl">Rent for Workshop</td>${monCols.map(i=>`<td>${sarFmt(SARD.rent[i])}</td>`).join('')}${qytd(SARD.rent)}</tr>`;
+  body+=`<tr class="tot"><td class="lbl">Total Expenses (+ rent)</td>${monCols.map(i=>`<td>${sarFmt(C.exp[i]+C.rent[i])}</td>`).join('')}${qytd(C.exp.map((v,i)=>v+C.rent[i]))}</tr>`;
+  const sur=C.rev.map((v,i)=>v-C.exp[i]-C.rent[i]);
+  body+=`<tr class="sec"><td class="lbl" colspan="18">Result</td></tr>`;
+  const resRow=(label,arr)=>{let s=`<td class="lbl">${escH(label)}</td>`;for(const i of monCols)s+=`<td class="${arr[i]>=0?'pos':'neg'}">${sarFmt(arr[i])}</td>`;
+    for(let qi=0;qi<4;qi++){const v=sarQ(arr,qi);s+=`<td class="q ${v>=0?'pos':'neg'}">${sarFmt(v)}</td>`;}const y=sarYTD(arr);s+=`<td class="ytd ${y>=0?'pos':'neg'}">${sarFmt(y)}</td>`;return s;};
+  const pctRow=(label,num,den)=>{let s=`<td class="lbl">${escH(label)}</td>`;for(const i of monCols){const p=sarPc(num[i],den[i]);s+=`<td class="${p>=100?'pos':'neg'}">${den[i]?p+'%':'—'}</td>`;}
+    for(let qi=0;qi<4;qi++){const p=sarPc(sarQ(num,qi),sarQ(den,qi));s+=`<td class="q ${p>=100?'pos':'neg'}">${sarQ(den,qi)?p+'%':'—'}</td>`;}
+    const p=sarPc(sarYTD(num),sarYTD(den));s+=`<td class="ytd ${p>=100?'pos':'neg'}">${sarYTD(den)?p+'%':'—'}</td>`;return s;};
+  body+=`<tr class="res">${resRow('Faayda / Nuksan',sur)}</tr>`;
+  body+=`<tr class="res">${pctRow('SAR %',C.rev,C.exp.map((v,i)=>v+C.rent[i]))}</tr>`;
+  body+=`<tr class="res">${pctRow('Operating SAR',C.rev,C.exp.map((v,i)=>v-C.nonop[i]))}</tr>`;
+  document.getElementById('sarGrid').innerHTML=`<table><thead>${head}</thead><tbody>${body}</tbody></table>`;
+}
+function sarCards(){
+  const C=sarCompute();
+  const m=sarMode==='month'?(+document.getElementById('sarMon').value||0):null;
+  const rev=m!=null?C.rev[m]:sarYTD(C.rev);
+  const exp=m!=null?(C.exp[m]+C.rent[m]):sarYTD(C.exp.map((v,i)=>v+C.rent[i]));
+  const pl=rev-exp, lbl=m!=null?SARD.months[m]:'Saal (YTD)';
+  document.getElementById('sar-rev-eye').textContent=`💵 Kamai (${lbl})`;
+  document.getElementById('sar-exp-eye').textContent=`💸 Kharcha (${lbl})`;
+  document.getElementById('sar-rev').textContent=inr(rev);
+  document.getElementById('sar-exp').textContent=inr(exp);
+  document.getElementById('sar-pl').textContent=inr(Math.abs(pl));
+  document.getElementById('sar-pl-eye').textContent=(pl>=0?'✅ Faayda':'🔻 Nuksan')+` (${lbl})`;
+  const plc=document.getElementById('sar-plCard');plc.classList.toggle('go',pl>=0);plc.classList.toggle('crit',pl<0);
+  document.getElementById('sar-pct').textContent=exp?sarPc(rev,exp)+'%':'—';
+  document.getElementById('sar-pct-foot').textContent=exp?(pl>=0?'faayda me ✅':'nuksan me 🔻')+' · 100%+ = faayda':'kharche bharo → SAR nikal aayega';
+  document.getElementById('sarInfo').textContent=`FY ${SARD.fyLabel} · ${m!=null?escH(SARD.months[m])+' ka report':'saal bhar'} · ● = DC se auto · sirf kharche bharo`;
+}
+let sarSaveT=null,sarQueue=[];
+function sarSave(mon,field,value){sarQueue.push({mon,field,value});clearTimeout(sarSaveT);
+  sarSaveT=setTimeout(async()=>{const edits=sarQueue.splice(0);try{await fetch(API_BASE+'/api/sar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fy:SARD.fy,edits})});}catch(e){}},500);}
+document.getElementById('sarGrid').addEventListener('change',e=>{const inp=e.target.closest('input[data-k]');if(!inp)return;
+  const k=inp.dataset.k,m=+inp.dataset.m,raw=inp.value.trim();
+  const line=sarLineMap()[k];if(!line)return;
+  if(raw===''){sarSave(m,k,'');line.values[m]=(line.auto&&line.autoValues)?line.autoValues[m]:0;}
+  else{const v=Math.round(Number(raw)||0);sarSave(m,k,v);line.values[m]=v;}
+  sarRender();});
+async function sarDetail(line){if(!SARD)return;const m=+document.getElementById('sarMon').value||0;
+  const r=await fetch(API_BASE+`/api/sar/detail?fy=${SARD.fy}&mon=${m}&line=${encodeURIComponent(line)}`).catch(()=>null);
+  if(!r||!r.ok){alert('Detail load nahi hua');return;}
+  const j=await r.json();
+  if(!j.rows||!j.rows.length){alert(j.note||'Is line ka detail nahi (manual entry).');return;}
+  openList({title:j.title,subtitle:j.note||'',columns:j.columns,rows:j.rows});}
+document.getElementById('sarGrid').addEventListener('click',e=>{if(e.target.closest('input'))return;const tr=e.target.closest('tr[data-line]');if(tr)sarDetail(tr.dataset.line);});
+clickable('sar-rev',()=>{if(!SARD)return;const m=+document.getElementById('sarMon').value||0;
+  const rows=SARD.revenue.filter(r=>r.auto||+r.values[m]>0).map(r=>({line:r.label,amount:Math.round(+r.values[m]||0),src:r.auto?'DC auto':'manual'}));
+  openList({title:'Kamai breakdown — '+SARD.months[m]+' '+SARD.fyLabel,subtitle:'Kisi auto line (●) pe report me click karo → part/invoice-level detail',
+    columns:[{key:'line',label:'Revenue line'},{key:'amount',label:'₹',money:true,sum:true},{key:'src',label:'Source'}],rows});},'Click: kamai ka breakdown');
+document.getElementById('sarFY').addEventListener('change',e=>sarLoad(e.target.value));
+document.getElementById('sarMon').addEventListener('change',()=>{if(SARD)sarRender();});
+document.getElementById('sarYearBtn').addEventListener('click',()=>{sarMode=sarMode==='year'?'month':'year';
+  document.getElementById('sarYearBtn').textContent=sarMode==='year'?'📄 Ek mahina':'📅 Saal bhar';
+  document.getElementById('sarMon').style.display=sarMode==='year'?'none':'';
+  if(SARD)sarRender();});
+function sarExportRep(){
+  const C=sarCompute();
+  if(sarMode==='month'){
+    const m=+document.getElementById('sarMon').value||0;
+    const den=C.exp[m]+C.rent[m], pl=C.rev[m]-den, pct=den?Math.round(C.rev[m]/den*1000)/10:0;
+    const rows=[];
+    SARD.revenue.forEach(r=>{if(r.auto||+r.values[m]>0)rows.push({lbl:(r.auto?'● ':'')+r.label,v:Math.round(+r.values[m]||0)});});
+    rows.push({lbl:'TOTAL REVENUE',v:Math.round(C.rev[m])});
+    SARD.expense.forEach(e=>rows.push({lbl:e.label,v:Math.round(+e.values[m]||0)}));
+    rows.push({lbl:'Rent for Workshop',v:Math.round(+SARD.rent[m]||0)});
+    rows.push({lbl:'TOTAL EXPENSES (+rent)',v:Math.round(den)});
+    rows.push({lbl:(pl>=0?'FAAYDA':'NUKSAN'),v:Math.round(pl)});
+    return {title:'Workshop SAR — '+SARD.months[m]+' '+SARD.fyLabel,
+      subtitle:`${SARD.months[m]} ${SARD.fyLabel} · SAR ${den?pct+'%':'—'} · ${pl>=0?'Faayda':'Nuksan'} ₹${Math.round(Math.abs(pl)).toLocaleString('en-IN')}`,
+      columns:[{key:'lbl',label:'Particulars'},{key:'v',label:'₹',money:true,sum:false}],rows,
+      filename:'SAR_'+SARD.months[m]+'_'+SARD.fyLabel};
+  }
+  const cols=[{key:'lbl',label:'Particulars'},...SARD.months.map((m,i)=>({key:'m'+i,label:m,num:true})),{key:'ytd',label:'YTD',num:true}];
+  const rows=[];const push=(label,arr)=>{const o={lbl:label,ytd:sarYTD(arr)};SARD.months.forEach((m,i)=>o['m'+i]=Math.round(arr[i]||0));rows.push(o);};
+  rows.push({lbl:'— REVENUE —'});SARD.revenue.forEach(r=>push(r.label,r.values));push('Total Gross Revenue',C.rev);
+  rows.push({lbl:'— EXPENSES —'});SARD.expense.forEach(r=>push(r.label,r.values));push('Rent for Workshop',C.rent);push('Total Expenses (+rent)',C.exp.map((v,i)=>v+C.rent[i]));
+  rows.push({lbl:'— RESULT —'});push('Faayda / Nuksan',C.rev.map((v,i)=>v-C.exp[i]-C.rent[i]));
+  return {title:'Workshop SAR '+SARD.fyLabel,subtitle:'Service Absorption Ratio — saal bhar',columns:cols,rows,filename:'SAR_'+SARD.fyLabel};
+}
+document.getElementById('sarPdf').addEventListener('click',()=>{if(SARD)exportReport('pdf',sarExportRep());});
+document.getElementById('sarExport').addEventListener('click',()=>{if(SARD)exportReport('excel',sarExportRep());});
+document.querySelectorAll('.nav-item[data-view="sar"]').forEach(n=>n.addEventListener('click',()=>sarLoad()));
 
 /* ================= FOCUS PARTS (Hero FPG) ================= */
 let FC=null;

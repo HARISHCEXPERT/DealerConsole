@@ -1,5 +1,0 @@
-2026/10/15-11:43:32.591 db4 Reusing MANIFEST D:\Projetcs\hmcl data\dealer-console\.profiles\dms-service\Default\IndexedDB\https_connect.heromotocorp.biz_0.indexeddb.leveldb/MANIFEST-000001
-2026/10/15-11:43:32.592 db4 Recovering log #509
-2026/10/15-11:43:32.595 db4 Reusing old log D:\Projetcs\hmcl data\dealer-console\.profiles\dms-service\Default\IndexedDB\https_connect.heromotocorp.biz_0.indexeddb.leveldb/000509.log 
-2026/10/15-11:43:40.959 db4 Manual compaction at level-0 from '\x00\x9f\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xa0\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/10/15-11:43:44.370 db4 Manual compaction at level-0 from '\x00\xa0\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xa1\x00\x00\x00' @ 0 : 0; will stop at (end)
