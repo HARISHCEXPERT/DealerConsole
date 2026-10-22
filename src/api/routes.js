@@ -17,6 +17,7 @@ import { guideApi } from './guide.js';
 import { focusApi } from './focus.js';
 import { khaataApi } from './khaata.js';
 import { sarApi } from './sar.js';
+import { whatsappApi } from './whatsapp.js';
 import { billingApi } from './billing.js';
 import { afterSaleApi } from './afterSale.js';
 import { SERVICE_TYPES, DEFAULT_TYPE } from '../config/serviceTypes.js';
@@ -345,6 +346,7 @@ api.use(billingApi); // automation → billing (pending enquiry, VIN, paisa)
 api.use(focusApi); // focus parts (Hero FPG) — target vs workshop, mechanic-wise
 api.use(khaataApi); // party statement (vehicle / parts purchase) + DMS bill milaan
 sarApi(api);        // Workshop SAR (Service Absorption Ratio) — P&L: auto revenue + manual kharche
+api.use(whatsappApi); // WhatsApp reminders — TTS voice note
 api.use(claims);   // warranty + FSC credit note (portal .xls upload)
 
 // ---- PDF export (koi bhi report) ----

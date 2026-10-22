@@ -1404,6 +1404,58 @@
         <button class="subtab active" data-asub="bill">🧾 Billing</button>
         <button class="subtab" data-asub="ins">🛡 Insurance</button>
         <button class="subtab" data-asub="rto">🚦 RTO</button>
+        <button class="subtab" data-asub="wa">📱 WhatsApp Reminders</button>
+      </div>
+
+      <div class="subview" id="asub-wa">
+        <div class="subtabs" id="waSubtabs" style="margin-bottom:14px">
+          <button class="subtab active" data-wasub="fsc">🎯 FSC (free service) due</button>
+          <button class="subtab" data-wasub="paid">💵 Paid service due</button>
+          <button class="subtab" data-wasub="lost">😶 Lost / purane customer</button>
+          <button class="subtab" data-wasub="custom">📋 Apna data</button>
+          <button class="subtab" data-wasub="postsvc">⭐ Post-service feedback</button>
+        </div>
+        <div class="empty-note" style="margin-bottom:12px"><span>📱 Jinki service due hai unhe <b>WhatsApp reminder</b>. "Send message" dabao → us customer ka WhatsApp khulega ready message ke saath — <b>tum khud send dabao</b>. Free hai (bulk/voice baad me). Message niche template se auto banta hai (<code>{naam} {model} {service} {expiry}</code>).</span></div>
+        <div class="panel" style="margin-bottom:14px"><div class="panel-head"><h3>Message template</h3><span class="sub">edit karke 💾 Save dabao — sab customers pe lagega</span>
+          <select id="waType" style="margin-left:auto;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:6px 9px;font-size:12.5px;max-width:200px"></select>
+          <button class="btn-sync" id="waTplSave" style="margin-left:8px">💾 Save</button>
+          <button class="xbtn" id="waTplReset" style="margin-left:6px">Default</button>
+          <button class="xbtn" id="waTplDel" style="margin-left:6px">🗑</button></div>
+          <div style="padding:12px 16px"><textarea id="waTpl" rows="4" style="width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px;font-family:var(--body);font-size:13.5px;resize:vertical"></textarea></div></div>
+        <div class="panel" id="waCustomPanel" style="display:none;margin-bottom:14px"><div class="panel-head"><h3>Apna customer data</h3><span class="sub">har line: mobile aur naam (model optional) — comma/space se</span><button class="btn-sync" id="waCustomLoad" style="margin-left:auto">Load</button></div>
+          <div style="padding:12px 16px"><textarea id="waCustomTxt" rows="5" placeholder="9876543210, Ramesh Kumar, HF Deluxe&#10;8859719065 Prakash Chandra&#10;7017041813, Nirmal" style="width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px;font-family:var(--mono);font-size:13px;resize:vertical"></textarea></div></div>
+        <div class="filters">
+          <div class="fld" id="waLostMonFld" style="display:none"><label>Service se purani</label><select id="waLostMon"><option value="3">3 mahine+</option><option value="6" selected>6 mahine+</option><option value="9">9 mahine+</option><option value="12">12 mahine+</option></select></div>
+          <div class="fld" id="waBillDateFld" style="display:none"><label>Bill date (se–tak)</label><div style="display:flex;gap:6px"><input type="date" id="waBillFrom"><input type="date" id="waBillTo"></div></div>
+          <div class="fld"><label>Model</label><select id="waModel"><option value="">Sab</option></select></div>
+          <div class="fld"><label>Voice awaaz</label><select id="waVoice"><option value="female">Female (Swara)</option><option value="male">Male (Madhur)</option></select></div>
+          <div class="fld" style="flex:1"><label>Search</label><input id="waSearch" placeholder="VIN / customer / mobile"></div>
+          <span class="mono" id="waInfo" style="color:var(--muted);align-self:center"></span>
+        </div>
+        <div class="section-head"><h2>Due customers</h2><span class="count" id="wa-count">—</span><span class="rule"></span></div>
+        <div class="panel"><div class="tbl-wrap"><table>
+          <thead><tr><th>Customer</th><th>Mobile</th><th>Model</th><th>VIN</th><th id="waDueCol">Due</th><th>Expiry</th><th>Status</th><th></th></tr></thead>
+          <tbody id="waBody"><tr><td colspan="8" style="color:var(--muted-2)">Service Sync karo (FSC/Paid VIN data aa jayega)</td></tr></tbody>
+        </table></div></div>
+      </div>
+      <!-- Call/follow-up log modal (mini CRM) -->
+      <div id="waLogModal" style="display:none;position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:560px;width:92%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)">
+            <div><div id="waLogName" style="font-weight:700;font-size:15px"></div><div id="waLogSub" class="mono" style="color:var(--muted);font-size:12px"></div></div>
+            <button class="xbtn" id="waLogClose" style="margin-left:auto">✕</button>
+          </div>
+          <div style="padding:16px 18px">
+            <div style="color:var(--muted);font-size:12.5px;margin-bottom:6px">Call/baat ka natija chuno:</div>
+            <div id="waLogBtns" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px"></div>
+            <textarea id="waLogNote" rows="2" placeholder="Note (optional) — customer kya bola, kab aayega…" style="width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;resize:vertical"></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center"><button class="btn-sync" id="waLogSave" disabled>💾 Save follow-up</button><span id="waLogMsg" class="mono" style="color:var(--muted);font-size:12px"></span></div>
+            <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+              <div style="color:var(--muted);font-size:12.5px;margin-bottom:8px">Pichhli history</div>
+              <div id="waLogHist" style="display:flex;flex-direction:column;gap:8px"><span style="color:var(--muted-2)">—</span></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="subview" id="asub-ins">
@@ -3642,7 +3694,8 @@ function fvRender(){
   if(toY)l=l.filter(r=>r.dueExpYmd&&r.dueExpYmd<=toY);
   if(md)l=l.filter(r=>(r.model||'')===md);
   if(q)l=l.filter(r=>[r.asset,r.customer,r.mobile].some(v=>String(v||'').toLowerCase().includes(q)));
-  l.sort((a,b)=>(a.dueNum||9)-(b.dueNum||9)||String(a.dueExpYmd).localeCompare(String(b.dueExpYmd)));
+  // sabse nazdeek expiry pehle (23/10/2026 -> feb 2027); date nahi hai to aakhir me, phir FSC number se
+  l.sort((a,b)=>{const ae=a.dueExpYmd||'9999-99',be=b.dueExpYmd||'9999-99';return ae<be?-1:ae>be?1:(a.dueNum||9)-(b.dueNum||9);});
   document.getElementById('fvBody').innerHTML=l.length?l.map(r=>`<tr><td class="mono">${escH(r.asset||'—')}</td><td>${escH(r.model||'—')}</td><td>${escH(r.customer||'—')}</td><td class="mono">${escH(r.mobile||'—')}</td><td class="num mono">${r.max}</td><td class="num mono">${r.avail}</td><td>${r.dueNum?`<span class="pill warn">${escH(r.due)}</span>`:(r.avail>=r.max&&r.max?'<span class="pill go">Saari ho gayi</span>':'—')}</td><td class="mono">${escH(r.dueExp||'—')}</td><td>${escH(r.dueMonthLabel||'—')}</td></tr>`).join('')
     :'<tr><td colspan="9" style="color:var(--muted-2)">'+((FV.rows||[]).length?'Is filter me koi gaadi nahi':'FSC VIN data nahi — ek baar Service Sync karo')+'</td></tr>';
   document.getElementById('fv-count').textContent=`${l.length} gaadi`;
@@ -3952,7 +4005,268 @@ document.querySelector('#partsSubtabs .subtab[data-psub="focus"]').addEventListe
 document.querySelectorAll('#autoSubtabs .subtab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('#autoSubtabs .subtab').forEach(x=>x.classList.toggle('active',x===t));
   document.querySelectorAll('#view-auto .subview').forEach(v=>v.classList.remove('active'));document.getElementById('asub-'+t.dataset.asub).classList.add('active');
-  if(t.dataset.asub==='bill')blInit();}));
+  if(t.dataset.asub==='bill')blInit();if(t.dataset.asub==='wa')waInit();}));
+
+/* ================= AUTOMATION → WHATSAPP REMINDERS (click-to-send) ================= */
+let WA={mode:'fsc',fsc:[],paid:[],lost:[],custom:[],postsvc:[],loaded:false,lostLoaded:false,postLoaded:false,logLatest:{},logRow:null,logPick:''};
+// follow-up status (CRM) — key, label+emoji, pill class
+const WA_OUTCOMES=[
+  {k:'interested',t:'🟢 Interested',c:'go'},
+  {k:'coming',t:'📅 Aayega',c:'go'},
+  {k:'callback',t:'🔁 Baad me call',c:'warn'},
+  {k:'noanswer',t:'📵 Uthaya nahi',c:'warn'},
+  {k:'unreachable',t:'❌ Phone nahi laga',c:'crit'},
+  {k:'local',t:'🏠 Local me karwa li',c:'crit'},
+  {k:'outside',t:'🌍 Bahar karwa li',c:'crit'},
+  {k:'notint',t:'🚫 Mana kar diya',c:'crit'},
+  {k:'done',t:'✅ Ho gayi (hamare yahan)',c:'go'},
+];
+const waOutc=k=>WA_OUTCOMES.find(o=>o.k===k);
+const waRowKey=r=>String(r.asset||'').trim().toUpperCase()||('m:'+String(r.mobile||'').replace(/\D/g,'').slice(-10));
+const waDealer=()=>window.DC_LICENSE?.name||'हमारी agency';
+const waType=()=>document.getElementById('waType').value;
+function waTplDef(mode,type){const dn=waDealer();
+  if(type==='camp'){
+    if(mode==='paid'||mode==='postsvc')return '';   // in modes me camp khaali — khud bharo zaroorat ho to
+    return `नमस्ते {naam} जी 🙏\n${dn} me *FREE SERVICE CAMP* laga hai! Apni *{model}* ka free check-up + service karwa lein. Jaldi aaiye — offer seemit samay ke liye.\n— सर्विस टीम, ${dn}`;
+  }
+  if(mode==='postsvc')return `नमस्ते {naam} जी 🙏\n${dn} me *{model}* ({service}) ki service karane ke liye dhanyavaad! Aapka feedback hamare liye bahut zaroori hai — 1 minute me batayein:\n\n1) Service ki *gunwatta* (1-10): \n2) *Supervisor* ka vyavhaar (1-10): \n3) *Washing* quality (1-10): \n4) Aapki *complaint* theek se hui? (Haan/Naa): \n5) *Overall safai* (1-10): \n\nAapke sujhav se hum aur behtar karenge 🙏\n— सर्विस टीम, ${dn}`;
+  if(mode==='fsc')return `नमस्ते {naam} जी, ${dn} से 🙏\nआपकी *{model}* की *{service}* (free service) अभी बाकी है — *{expiry}* तक करवा सकते हैं। कृपया जल्दी आकर फ्री सर्विस का लाभ लें।\n— सर्विस टीम, ${dn}`;
+  if(mode==='lost')return `नमस्ते {naam} जी 🙏\n${dn} से — काफ़ी समय से आपकी *{model}* की सर्विस नहीं हुई (आख़िरी: {last})। गाड़ी की सेहत के लिए एक बार सर्विस ज़रूरी है। कृपया अपने नज़दीकी सर्विस सेंटर पर आएं — हम आपका इंतज़ार कर रहे हैं।\n— सर्विस टीम, ${dn}`;
+  if(mode==='custom')return `नमस्ते {naam} जी 🙏\n${dn} की ओर से एक ज़रूरी सूचना — कृपया अपने नज़दीकी सर्विस सेंटर पर संपर्क करें।\n— ${dn}`;
+  return `नमस्ते {naam} जी, ${dn} से 🙏\nआपकी *{model}* की *{service}* due है। कृपया समय पर सर्विस करवा लें ताकि गाड़ी हमेशा बढ़िया चले।\n— सर्विस टीम, ${dn}`;
+}
+// ---- naam-wise template: har mode ka apna list, localStorage me ----
+const WA_SEED=[{id:'normal',name:'📣 Normal reminder'},{id:'camp',name:'🎪 Service camp'}];
+function waTplList(mode){try{const v=localStorage.getItem(`dc_wa_tpls_${mode}`);if(v){const a=JSON.parse(v);if(Array.isArray(a)&&a.length)return a;}}catch{}return WA_SEED.map(x=>({...x}));}
+function waTplListSet(mode,arr){try{localStorage.setItem(`dc_wa_tpls_${mode}`,JSON.stringify(arr));}catch{}}
+const waTplGet=(mode,id)=>{try{const v=localStorage.getItem(`dc_wa_tpl_${mode}_${id}`);return v!=null?v:waTplDef(mode,id);}catch{return waTplDef(mode,id);}};
+const waTplSet=(mode,id,v)=>{try{localStorage.setItem(`dc_wa_tpl_${mode}_${id}`,v);}catch{}};
+// dropdown ko current mode ke templates se bharo (+ "naya" option); given id select karo
+function waTplFillSelect(selId){const sel=document.getElementById('waType');const list=waTplList(WA.mode);
+  sel.innerHTML=list.map(t=>`<option value="${escH(t.id)}">${escH(t.name)}</option>`).join('')+'<option value="__new__">➕ Naya template…</option>';
+  sel.value=(selId&&list.some(t=>t.id===selId))?selId:list[0].id;return sel.value;}
+// current template ko textarea me laao
+function waTplLoad(id){const v=id||waType();document.getElementById('waTpl').value=waTplGet(WA.mode,v);}
+const waClean=(s)=>String(s||'').replace(/yet\s*to\s*avail/ig,'').replace(/\s+/g,' ').trim();
+// Hero "LASTNAME, FIRSTNAME" -> "FIRSTNAME LASTNAME" (first naam pehle); "..." / khaali hata do
+function waName(s){s=String(s||'').trim();const i=s.indexOf(',');if(i<0)return s;
+  const clean=v=>/^[.\s]*$/.test(v)?'':v.trim();
+  const last=clean(s.slice(0,i)),first=clean(s.slice(i+1));
+  return [first,last].filter(Boolean).join(' ')||s;}
+const WA_DUECOL={fsc:'Due FSC',paid:'Due service',lost:'Aakhri service',custom:'—',postsvc:'Service type'};
+async function waInit(){
+  if(!WA.loaded){
+    const [f,p]=await Promise.all([fetch(API_BASE+'/api/service/fsc-vin').then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch(API_BASE+'/api/service/paid-vin').then(r=>r.ok?r.json():null).catch(()=>null)]);
+    WA.fsc=((f&&f.rows)||[]).filter(r=>r.dueNum>0)
+      .sort((a,b)=>{const ae=a.dueExpYmd||'9999-99',be=b.dueExpYmd||'9999-99';return ae<be?-1:ae>be?1:(a.dueNum||9)-(b.dueNum||9);})
+      .map(r=>({customer:waName(r.customer),mobile:r.mobile,model:r.model,asset:r.asset,due:r.due,exp:r.dueExp||'',last:''}));
+    WA.paid=((p&&p.rows)||[]).filter(r=>r.state==='yet').map(r=>({customer:waName(r.customer),mobile:r.mobile,model:r.model,asset:r.asset,due:waClean(r.due),exp:'',last:''}));
+    WA.loaded=true;
+  }
+  if(WA.mode==='lost'&&!WA.lostLoaded)await waLoadLost();
+  if(WA.mode==='postsvc'&&!WA.postLoaded)await waLoadPost();
+  await waLoadLatest();
+  waSyncControls();
+  waTplFillSelect();waTplLoad();
+  waRender();
+}
+// post-service: bill-date range (default = aakhri billing din). Naye bill upar.
+async function waLoadPost(){
+  const fromE=document.getElementById('waBillFrom'),toE=document.getElementById('waBillTo');
+  let from=fvToYmd(fromE.value),to=fvToYmd(toE.value);
+  if(!WA.postInit){from='';to='';}   // pehli baar: auto aakhri din
+  const qs=new URLSearchParams();if(from)qs.set('from',from);if(to)qs.set('to',to);
+  document.getElementById('waInfo').textContent='bill ke customer nikaal rahe…';
+  try{
+    const j=await fetch(API_BASE+'/api/auto/whatsapp/postservice'+(qs.toString()?'?'+qs.toString():'')).then(r=>r.ok?r.json():null);
+    WA.postsvc=((j&&j.rows)||[]).map(r=>({customer:waName(r.customer),mobile:r.mobile,model:r.model,asset:r.asset,due:r.type||'',exp:r.date||'',last:''}));
+    WA.postFrom=(j&&j.from)||'';WA.postTo=(j&&j.to)||'';
+    if(!WA.postInit&&j&&j.toYmd){fromE.value=j.fromYmd||j.toYmd;toE.value=j.toYmd;WA.postInit=true;}   // picker me aakhri din dikha do
+    WA.postLoaded=true;
+  }catch(e){WA.postsvc=[];}
+}
+// har customer ka aakhri follow-up status (list me pill ke liye)
+async function waLoadLatest(){
+  try{const j=await fetch(API_BASE+'/api/auto/whatsapp/log/latest').then(r=>r.ok?r.json():null);WA.logLatest=(j&&j.latest)||{};}catch{WA.logLatest={};}
+}
+// lost/custom ke controls dikhao/chhupao
+function waSyncControls(){
+  document.getElementById('waLostMonFld').style.display=WA.mode==='lost'?'':'none';
+  document.getElementById('waBillDateFld').style.display=WA.mode==='postsvc'?'':'none';
+  document.getElementById('waCustomPanel').style.display=WA.mode==='custom'?'':'none';
+}
+async function waLoadLost(){
+  const m=document.getElementById('waLostMon').value||6;
+  document.getElementById('waInfo').textContent='lost customer nikaal rahe…';
+  try{
+    const j=await fetch(API_BASE+'/api/auto/whatsapp/lost?months='+m).then(r=>r.ok?r.json():null);
+    WA.lost=((j&&j.rows)||[]).map(r=>({customer:waName(r.customer),mobile:r.mobile,model:r.model,asset:r.asset,due:r.last||'',exp:'',last:r.last||''}));
+    WA.lostLoaded=true;
+  }catch(e){WA.lost=[];}
+}
+// textarea se: "mobile, naam, model"  (comma ya space se)
+function waParseCustom(){
+  const txt=document.getElementById('waCustomTxt').value||'';
+  WA.custom=txt.split(/\n+/).map(ln=>ln.trim()).filter(Boolean).map(ln=>{
+    const parts=ln.split(/[,\t]/).map(s=>s.trim()).filter(Boolean);
+    let mobile='',rest=[];
+    for(const p of parts){const d=p.replace(/\D/g,'');if(!mobile&&d.length>=10){mobile=d.slice(-10);}else rest.push(p);}
+    if(!mobile){const m=ln.match(/(\d{10})/);if(m){mobile=m[1];rest=[ln.replace(m[1],'').replace(/[,\s]+/g,' ').trim()].filter(Boolean);}}
+    const naam=rest[0]||'',model=rest[1]||'';
+    return {customer:waName(naam),mobile,model,asset:'',due:'',exp:'',last:''};
+  }).filter(r=>r.mobile);
+}
+function waRender(){
+  const list=WA[WA.mode]||[];
+  document.getElementById('waDueCol').textContent=WA_DUECOL[WA.mode]||'Due';
+  const mdl=document.getElementById('waModel'),cur=mdl.value;
+  mdl.innerHTML='<option value="">Sab</option>'+[...new Set(list.map(r=>r.model).filter(Boolean))].sort().map(v=>`<option>${escH(v)}</option>`).join('');mdl.value=cur;
+  const md=mdl.value,q=(document.getElementById('waSearch').value||'').toLowerCase().trim();
+  let l=list.slice();
+  if(md)l=l.filter(r=>(r.model||'')===md);
+  if(q)l=l.filter(r=>[r.asset,r.customer,r.mobile].some(v=>String(v||'').toLowerCase().includes(q)));
+  const noPh=l.filter(r=>String(r.mobile||'').replace(/\D/g,'').length<10).length;
+  const empty={fsc:'Koi FSC due nahi 👍 (ya Service Sync karo)',paid:'Koi paid due nahi 👍 (ya Service Sync karo)',lost:'Koi lost customer nahi mila (months badhao ya Service Sync karo)',custom:'Upar apna data paste kar ke Load dabao',postsvc:'Aakhri din koi FSC/Paid/Joyride bill nahi (ya Service Sync karo)'}[WA.mode];
+  document.getElementById('waBody').innerHTML=l.length?l.map((r,i)=>{const ok=String(r.mobile||'').replace(/\D/g,'').length>=10;
+    const st=WA.logLatest[waRowKey(r)];const o=st&&waOutc(st.outcome);
+    const stCell=o?`<span class="pill ${o.c}" title="${escH(st.note||'')}">${escH(o.t)}</span><br><span class="mono" style="color:var(--muted-2);font-size:11px">${escH(st.dt||'')}</span>`:'<span style="color:var(--muted-2)">—</span>';
+    return `<tr><td>${escH(r.customer||'—')}</td><td class="mono">${escH(r.mobile||'—')}</td><td>${escH(r.model||'—')}</td><td class="mono">${escH(r.asset||'—')}</td><td>${escH(r.due||'—')}</td><td class="mono">${escH(r.exp||'—')}</td><td>${stCell}</td><td style="white-space:nowrap">${ok?`<button class="xbtn wa-call" data-i="${i}" title="PC se dabao — phone (KDE Connect) pe dialer khulega">📞 Call</button> <button class="btn-sync wa-send" data-i="${i}">💬 Send</button> <button class="xbtn wa-voice" data-i="${i}">🔊 Voice</button> `:'<span class="pill crit">mobile nahi</span> '}<button class="xbtn wa-log" data-i="${i}" title="Follow-up / status note karo">📝</button></td></tr>`;}).join('')
+    :`<tr><td colspan="8" style="color:var(--muted-2)">${empty}</td></tr>`;
+  window.WA_VIEW=l;
+  document.getElementById('wa-count').textContent=`${l.length} customer${noPh?` · ${noPh} ka mobile nahi`:''}`;
+  const lbl={fsc:'FSC due',paid:'Paid due',lost:'Lost customer',custom:'Apna data',postsvc:'Post-service feedback'+(WA.postFrom?' · bill '+WA.postFrom+(WA.postTo&&WA.postTo!==WA.postFrom?'–'+WA.postTo:''):'')}[WA.mode];
+  document.getElementById('waInfo').textContent=`${lbl} · click-to-send (free)`;
+}
+function waFill(tpl,r){return tpl.replace(/{naam}/g,r.customer||'').replace(/{model}/g,r.model||'').replace(/{service}/g,r.due||'').replace(/{expiry}/g,r.exp||'—').replace(/{vin}/g,r.asset||'').replace(/{last}/g,r.last||'—');}
+function waSend(r){
+  const msg=waFill(document.getElementById('waTpl').value,r);
+  const ph='91'+String(r.mobile||'').replace(/\D/g,'').slice(-10);
+  if(ph.length!==12){alert('Mobile number sahi nahi: '+r.mobile);return;}
+  window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+document.querySelectorAll('#waSubtabs .subtab').forEach(t=>t.addEventListener('click',async()=>{
+  document.querySelectorAll('#waSubtabs .subtab').forEach(x=>x.classList.toggle('active',x===t));
+  WA.mode=t.dataset.wasub;
+  if(WA.mode==='lost'&&!WA.lostLoaded)await waLoadLost();
+  if(WA.mode==='postsvc'&&!WA.postLoaded)await waLoadPost();
+  if(WA.mode==='custom')waParseCustom();
+  waSyncControls();
+  waTplFillSelect();waTplLoad();waRender();}));
+document.getElementById('waLostMon').addEventListener('change',async()=>{WA.lostLoaded=false;await waLoadLost();waRender();});
+['waBillFrom','waBillTo'].forEach(id=>document.getElementById(id).addEventListener('change',async()=>{WA.postLoaded=false;await waLoadPost();await waLoadLatest();waRender();}));
+document.getElementById('waCustomLoad').addEventListener('click',()=>{waParseCustom();waRender();});
+// dropdown: template chuno — ya "➕ Naya" se naya banao
+document.getElementById('waType').addEventListener('change',e=>{
+  if(e.target.value==='__new__'){
+    const nm=(prompt('Naye template ka naam? (jaise: Diwali offer, Insurance yaad)')||'').trim();
+    const list=waTplList(WA.mode);
+    if(!nm){waTplFillSelect(list[0].id);waTplLoad();return;}
+    const id='c'+Date.now().toString(36);
+    list.push({id,name:nm});waTplListSet(WA.mode,list);
+    waTplSet(WA.mode,id,document.getElementById('waTpl').value||waTplDef(WA.mode,id));  // abhi likha hua copy ho jaata hai
+    waTplFillSelect(id);waTplLoad(id);
+    return;
+  }
+  waTplLoad(e.target.value);
+});
+// 💾 Save — current template ko pakka save
+document.getElementById('waTplSave').addEventListener('click',()=>{
+  const b=document.getElementById('waTplSave');
+  waTplSet(WA.mode,waType(),document.getElementById('waTpl').value);
+  const o=b.textContent;b.textContent='✓ Save ho gaya';b.disabled=true;
+  setTimeout(()=>{b.textContent=o;b.disabled=false;},1400);
+});
+// Default — is template ko default text pe wapas (save bhi)
+document.getElementById('waTplReset').addEventListener('click',()=>{const id=waType();const d=waTplDef(WA.mode,id);document.getElementById('waTpl').value=d;waTplSet(WA.mode,id,d);});
+// 🗑 — template delete (seed normal/camp + aakhri template delete nahi hote)
+document.getElementById('waTplDel').addEventListener('click',()=>{
+  const id=waType();
+  if(id==='normal'||id==='camp'){alert('Normal/Camp fixed template delete nahi hote — "Default" se reset kar sakte ho.');return;}
+  const list=waTplList(WA.mode);if(list.length<=1){alert('Kam se kam ek template rahega.');return;}
+  const t=list.find(x=>x.id===id);if(!confirm(`"${t?t.name:id}" template delete karein?`))return;
+  try{localStorage.removeItem(`dc_wa_tpl_${WA.mode}_${id}`);}catch{}
+  const nl=list.filter(x=>x.id!==id);waTplListSet(WA.mode,nl);
+  const sel=waTplFillSelect(nl[0].id);waTplLoad(sel);
+});
+['waModel'].forEach(id=>document.getElementById(id).addEventListener('change',waRender));
+document.getElementById('waSearch').addEventListener('input',waRender);
+function waMsg(r){return waFill(document.getElementById('waTpl').value,r);}
+async function waVoice(r,btn){
+  const ph='91'+String(r.mobile||'').replace(/\D/g,'').slice(-10);if(ph.length!==12){alert('Mobile number sahi nahi');return;}
+  const o=btn.textContent;btn.disabled=true;btn.textContent='🔊 bana rahe…';
+  try{
+    const resp=await fetch(API_BASE+'/api/auto/whatsapp/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:waMsg(r),voice:document.getElementById('waVoice').value})});
+    if(!resp.ok){const j=await resp.json().catch(()=>({}));throw new Error(j.error||('HTTP '+resp.status));}
+    const blob=await resp.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`reminder-${String(r.customer||'cust').replace(/[^\w]+/g,'_').slice(0,24)}.mp3`;
+    document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},5000);
+    setTimeout(()=>window.open(`https://wa.me/${ph}`,'_blank'),700);   // chat khulega — staff downloaded audio attach kare
+  }catch(e){const rl=/429|too many/i.test(e.message);alert('Voice note nahi bana: '+e.message+(rl?'':'\n(TTS ke liye internet chahiye)'));}
+  finally{btn.disabled=false;btn.textContent=o;}
+}
+// PC ka button -> phone (KDE Connect) pe dialer khole
+async function waCall(r,btn){
+  const digits=String(r.mobile||'').replace(/\D/g,'').slice(-10);
+  if(digits.length!==10){alert('Mobile number sahi nahi');return;}
+  const o=btn.textContent;btn.disabled=true;btn.textContent='📞 phone pe bhej rahe…';
+  try{
+    const resp=await fetch(API_BASE+'/api/auto/whatsapp/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mobile:digits})});
+    const j=await resp.json().catch(()=>({}));
+    if(!resp.ok)throw new Error(j.error||('HTTP '+resp.status));
+    btn.textContent='✓ phone pe khula';setTimeout(()=>{btn.textContent=o;btn.disabled=false;},1800);
+  }catch(e){alert('Call phone pe nahi gaya: '+e.message+'\n\n(PC pe KDE Connect chaalu + phone same wifi pe pair hona chahiye)');btn.disabled=false;btn.textContent=o;}
+}
+document.getElementById('waBody').addEventListener('click',e=>{
+  const c=e.target.closest('.wa-call');if(c){const r=(window.WA_VIEW||[])[+c.dataset.i];if(r)waCall(r,c);return;}
+  const s=e.target.closest('.wa-send');if(s){const r=(window.WA_VIEW||[])[+s.dataset.i];if(r)waSend(r);return;}
+  const v=e.target.closest('.wa-voice');if(v){const r=(window.WA_VIEW||[])[+v.dataset.i];if(r)waVoice(r,v);return;}
+  const g=e.target.closest('.wa-log');if(g){const r=(window.WA_VIEW||[])[+g.dataset.i];if(r)waLogOpen(r);}});
+// ---- follow-up / call log modal ----
+function waLogOpen(r){
+  WA.logRow=r;WA.logPick='';
+  document.getElementById('waLogName').textContent=r.customer||'—';
+  document.getElementById('waLogSub').textContent=[r.model,r.mobile,r.asset].filter(Boolean).join(' · ');
+  document.getElementById('waLogNote').value='';
+  document.getElementById('waLogMsg').textContent='';
+  document.getElementById('waLogSave').disabled=true;
+  document.getElementById('waLogBtns').innerHTML=WA_OUTCOMES.map(o=>`<button class="xbtn wa-oc" data-k="${o.k}">${escH(o.t)}</button>`).join('');
+  document.getElementById('waLogHist').innerHTML='<span style="color:var(--muted-2)">load ho raha…</span>';
+  document.getElementById('waLogModal').style.display='flex';
+  waLogHist(r);
+}
+function waLogClose(){document.getElementById('waLogModal').style.display='none';WA.logRow=null;}
+async function waLogHist(r){
+  try{
+    const qs=new URLSearchParams();if(r.asset)qs.set('vin',r.asset);if(r.mobile)qs.set('mobile',r.mobile);
+    const j=await fetch(API_BASE+'/api/auto/whatsapp/log?'+qs.toString()).then(x=>x.ok?x.json():null);
+    const rows=(j&&j.rows)||[];
+    document.getElementById('waLogHist').innerHTML=rows.length?rows.map(h=>{const o=waOutc(h.outcome);
+      return `<div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px"><span class="pill ${o?o.c:''}">${escH(o?o.t:h.outcome)}</span> <span class="mono" style="color:var(--muted-2);font-size:11px">${escH(h.dt)} ${escH(h.tm)}</span>${h.note?`<div style="margin-top:4px;font-size:13px">${escH(h.note)}</div>`:''}</div>`;}).join('')
+      :'<span style="color:var(--muted-2)">Abhi tak koi follow-up nahi</span>';
+  }catch{document.getElementById('waLogHist').innerHTML='<span style="color:var(--muted-2)">history load nahi hui</span>';}
+}
+document.getElementById('waLogClose').addEventListener('click',waLogClose);
+document.getElementById('waLogModal').addEventListener('click',e=>{if(e.target.id==='waLogModal')waLogClose();});
+document.getElementById('waLogBtns').addEventListener('click',e=>{const b=e.target.closest('.wa-oc');if(!b)return;
+  WA.logPick=b.dataset.k;
+  [...document.querySelectorAll('#waLogBtns .wa-oc')].forEach(x=>{const on=x===b;x.style.outline=on?'2px solid var(--accent)':'';x.style.fontWeight=on?'700':'';});
+  document.getElementById('waLogSave').disabled=false;});
+document.getElementById('waLogSave').addEventListener('click',async()=>{
+  const r=WA.logRow;if(!r||!WA.logPick)return;
+  const b=document.getElementById('waLogSave'),msg=document.getElementById('waLogMsg');
+  b.disabled=true;msg.textContent='save ho raha…';
+  try{
+    const resp=await fetch(API_BASE+'/api/auto/whatsapp/log',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({vin:r.asset||'',mobile:r.mobile||'',customer:r.customer||'',model:r.model||'',mode:WA.mode,outcome:WA.logPick,note:document.getElementById('waLogNote').value||''})});
+    const j=await resp.json().catch(()=>({}));if(!resp.ok)throw new Error(j.error||('HTTP '+resp.status));
+    // local map turant update — list me pill dikhe bina reload
+    WA.logLatest[waRowKey(r)]={outcome:WA.logPick,ts:j.ts,dt:(j.ts||'').slice(8,10)+'/'+(j.ts||'').slice(5,7)+'/'+(j.ts||'').slice(0,4),note:document.getElementById('waLogNote').value||''};
+    msg.textContent='✓ save';waRender();waLogHist(r);
+    setTimeout(waLogClose,500);
+  }catch(e){msg.textContent='';alert('Follow-up save nahi hua: '+e.message);b.disabled=false;}
+});
 let BL={enq:[],sel:null,vin:null,inited:false};
 document.querySelectorAll('.nav-item[data-view="auto"]').forEach(n=>n.addEventListener('click',()=>{if(document.getElementById('asub-bill').classList.contains('active'))blInit();}));
 const blNum=id=>Number(document.getElementById(id).value)||0;

@@ -53,7 +53,7 @@ function ensure() {
 function curFY() { const t = new Date(Date.now() + 5.5 * 3600e3); const y = t.getUTCFullYear(), m = t.getUTCMonth() + 1; return m >= 4 ? y : y - 1; }
 
 // service invoice ka type (routes.js jaisa) — Paid/Joyride/FSC/GR/Accidental
-function classifier() {
+export function classifier() {
   const d = db();
   const PKn = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const jobs = new Map();
