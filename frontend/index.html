@@ -2320,7 +2320,7 @@ function renderPtStock(){
   list.sort((a,b)=>b.stock*b.dlc-a.stock*a.dlc);
   const f3=v=>v?Math.round(v*1000)/1000:0;
   document.getElementById('ptStockBody').innerHTML=list.length?list.slice(0,1000).map(x=>{const lowF=x.moq>0&&x.stock<x.moq;const out=(x.outService||0)+(x.outCounter||0);
-    return '<tr data-pn="'+escH(x.partNo)+'"><td class="mono">'+x.partNo+'</td><td>'+(x.desc||'—')+(x.inMaster===false?' <span class="pill warn">Master me nahi</span>':'')+'</td><td class="mono">'+(x.cat||'—')+'</td>'+
+    return '<tr data-pn="'+escH(x.partNo)+'"><td class="mono" style="white-space:nowrap"><button class="xbtn wtu" data-pn="'+escH(x.partNo)+'" title="Where to use — kis gaadi me lagta hai" style="padding:2px 6px;margin-right:7px">🔧</button>'+x.partNo+'</td><td>'+(x.desc||'—')+(x.inMaster===false?' <span class="pill warn">Master me nahi</span>':'')+'</td><td class="mono">'+(x.cat||'—')+'</td>'+
     '<td class="num mono">'+(x.opening!=null?f3(x.opening):'—')+'</td><td class="num mono" style="color:var(--go)">'+(x.inQ?'+'+f3(x.inQ):'—')+'</td><td class="num mono" style="color:var(--warn)">'+(out?'−'+f3(out):'—')+'</td>'+
     '<td class="num mono strong" style="color:'+(x.stock<=0?"#e0524d":lowF?"var(--warn)":"var(--fg)")+'">'+f3(x.stock)+'</td><td class="num mono">'+(x.moq||'—')+'</td><td class="num mono">₹'+(x.dlc||0).toLocaleString('en-IN')+'</td><td class="num mono">₹'+(x.mrp||0).toLocaleString('en-IN')+'</td><td class="num mono">₹'+Math.round(x.stock*(x.dlc||0)).toLocaleString('en-IN')+'</td></tr>';}).join(''):'<tr><td colspan="11" style="color:var(--muted-2)">Parts Master khaali — Master page se upload karo</td></tr>';
   const sn=window.PT_SNAP;const info=document.querySelector('#ptSnapInfo span');
@@ -2574,6 +2574,7 @@ function openDrill(f={}){
   d.innerHTML=`<div class="dr" role="dialog" aria-modal="true" aria-labelledby="lTitle">
     <div class="dr-head"><div><h2 id="lTitle">List</h2><div class="sub" id="lSub">—</div></div><div class="xbtns" id="lX"></div><button class="dr-close" id="lClose" aria-label="Band karo">✕</button></div>
     <div class="dr-body">
+      <div id="lPre"></div>
       <div class="filters"><div class="fld" style="flex:1;min-width:220px"><label>Search</label><input id="lQ" placeholder="naam / phone / VIN / number…"></div>
         <div class="chips"><span id="lCount" class="mono" style="align-self:center;color:var(--muted)">—</span></div></div>
       <div class="panel"><div class="tbl-wrap"><table><thead id="lHead"></thead><tbody id="lBody"></tbody></table></div></div>
@@ -2608,7 +2609,9 @@ function renderList(){
 function openList(o){
   LIST=o;document.getElementById('lQ').value='';
   document.getElementById('lTitle').textContent=o.title;document.getElementById('lSub').textContent=o.subtitle||'';
+  const pre=document.getElementById('lPre'); if(pre)pre.innerHTML=o.pre||'';
   renderList();document.getElementById('ldrill').classList.add('on');
+  if(typeof o.afterRender==='function')o.afterRender();
 }
 function rangeOfInputs(fromId,toId){const f=(document.getElementById(fromId)?.value||'').trim(),t=(document.getElementById(toId)?.value||'').trim()||f;return f?(f===t?f:f+' to '+t):'Saari dates';}
 function clickable(id,fn,tip){const g=document.getElementById(id)?.closest('.gauge');if(!g)return;g.classList.add('clickable');g.title=tip||'Click: list kholo';g.addEventListener('click',fn);}
@@ -2680,7 +2683,86 @@ function tableReport(tbody,title,rangeTxt){
 })();
 
 /* ---------- LIVE STOCK: part ledger + milaan ---------- */
+// ---- Part fitment ("Where to use") — bundled partFitment.json se ----
+let FIT=null, FIT_LOADING=null;
+async function loadFitment(){
+  if(FIT)return FIT;
+  if(FIT_LOADING)return FIT_LOADING;
+  const tries=['partFitment.json','data/partFitment.json','src/data/partFitment.json',
+               API_BASE+'/partFitment.json',API_BASE+'/data/partFitment.json',API_BASE+'/api/part-fitment'];
+  FIT_LOADING=(async()=>{
+    for(const u of tries){
+      try{const r=await fetch(u);if(r.ok){const j=await r.json();if(j&&j.models&&j.parts){FIT=j;return j;}}}catch(e){}
+    }
+    throw new Error('partFitment.json nahi mili — use frontend folder me rakho');
+  })();
+  return FIT_LOADING;
+}
+const fitCode=pn=>{const m=String(pn||'').toUpperCase().match(/^[A-Z]?\d{4,6}([A-Z]+)/);return m?m[1]:'';};
+function fitLookup(pn){
+  const P=FIT.parts, MM=FIT.models, up=String(pn||'').trim().toUpperCase();
+  // exact (as-is / upper / +S / -S)
+  let key=null;
+  for(const k of [pn,up,up+'S',up.replace(/S$/,'')]) if(k&&P[k]){key=k;break;}
+  if(key){const p=P[key];return {exact:true,desc:p.d,mrp:p.mrp,models:(p.m||[]).map(i=>MM[i]).filter(Boolean)};}
+  // code se sambhavit
+  const c=fitCode(up);
+  if(c&&FIT.codes&&FIT.codes[c])return {exact:false,code:c,models:FIT.codes[c].map(i=>MM[i]).filter(Boolean)};
+  return {exact:false,code:c,models:[]};
+}
+// model naam ka core (alnum, paren hata ke); 8-char prefix se family match
+const fitCore=s=>String(s||'').toUpperCase().split('(')[0].replace(/[^A-Z0-9]/g,'');
+function fitModelMatch(dbModel, fitModel){
+  const a=fitCore(dbModel), b=fitCore(fitModel); if(a.length<4||b.length<4)return false;
+  const n=Math.min(8,a.length,b.length); if(n<5)return a===b;
+  return a.slice(0,n)===b.slice(0,n);
+}
+// VIN/reg box ka HTML (openList ke pre me jaata hai)
+function fitPreHtml(){
+  return `<div style="background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 12px">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">Pakka karo — VIN ya gaadi number daalo: ye part us gaadi me lagta hai ya nahi.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="fitVin" placeholder="VIN (chassis) ya gaadi number" style="flex:1;min-width:200px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-family:var(--mono);font-size:13px"><button class="btn-sync" id="fitCheck">Check</button></div>
+    <div id="fitResult" style="margin-top:9px;font-size:13.5px"></div></div>`;
+}
+// matched models ko list me ✓ se mark karo
+function fitMark(model){ for(const r of LIST.rows) r.match = (model && r._m && fitModelMatch(model,r._m))?'✓':''; renderList(); }
+async function fitCheckVin(){
+  const v=(document.getElementById('fitVin').value||'').trim();
+  const out=document.getElementById('fitResult');
+  if(!v){out.innerHTML='<span style="color:var(--muted)">VIN ya gaadi number daalo</span>';return;}
+  out.innerHTML='<span style="color:var(--muted)">dekh rahe…</span>';
+  try{
+    const j=await fetch(API_BASE+'/api/vehicle/model?q='+encodeURIComponent(v)).then(r=>r.json());
+    if(!j.found){out.innerHTML='<span style="color:var(--warn)">⚠ Is VIN/gaadi number ki gaadi data me nahi mili (sync kiya hai?)</span>';fitMark(null);return;}
+    const fits=LIST.rows.some(r=>r._m&&fitModelMatch(j.model,r._m));
+    const who=j.customer?' · '+escH(j.customer):'';
+    out.innerHTML=fits
+      ? `<span style="color:var(--go)">✓ Gaadi: <b>${escH(j.model)}</b>${who} — <b>ye part isme lagta hai</b></span>`
+      : `<span style="color:var(--warn)">⚠ Gaadi: <b>${escH(j.model)}</b>${who} — is model ke liye list me nahi mila (shayad nahi lagta — khud bhi dekh lo)</span>`;
+    fitMark(j.model);
+  }catch(e){out.innerHTML='<span style="color:var(--crit)">Error: '+escH(e.message)+'</span>';}
+}
+async function whereToUse(pn,btn){
+  const o=btn?btn.textContent:''; if(btn){btn.disabled=true;btn.textContent='…';}
+  try{
+    await loadFitment();
+    const res=fitLookup(pn);
+    const sub=res.exact
+      ? (res.models.length?`${res.models.length} models me lagta hai`+(res.desc?' · '+res.desc:''):'Catalog me hai par kisi model se tagged nahi (generic part)')
+      : (res.models.length?`⚠ Catalog me exact nahi — code "${res.code||''}" ke sambhavit ${res.models.length} models`:`Catalog me nahi mila${res.code?' (code '+res.code+')':''}`);
+    const rows=res.models.map((m,i)=>({n:i+1,model:m,_m:m,match:''}));
+    openList({title:'Where to use — '+pn, subtitle:sub, range:pn, pre:fitPreHtml(),
+      columns:[{key:'n',label:'#',num:true},{key:'model',label:'Model (jisme lagta hai)'},{key:'match',label:'Iss gaadi'}],
+      rows:rows.length?rows:[{n:'',model:'— koi model nahi —',_m:'',match:''}],
+      afterRender:()=>{
+        const b=document.getElementById('fitCheck'); if(b)b.addEventListener('click',fitCheckVin);
+        const i=document.getElementById('fitVin'); if(i){i.addEventListener('keydown',e=>{if(e.key==='Enter')fitCheckVin();}); setTimeout(()=>{try{i.focus();}catch(e){}},60);}
+      }});
+  }catch(e){alert(e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent=o;}}
+}
 document.getElementById('ptStockBody').addEventListener('click',async e=>{
+  const wt=e.target.closest('.wtu');if(wt){e.stopPropagation();whereToUse(wt.dataset.pn,wt);return;}
   const tr=e.target.closest('tr[data-pn]');if(!tr)return;
   const pn=tr.dataset.pn;
   const r=await fetch(API_BASE+'/api/stock/parts/ledger?partNo='+encodeURIComponent(pn));const j=await r.json().catch(()=>null);

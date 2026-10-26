@@ -1,7 +1,9 @@
 // ============================================================
 //  WhatsApp reminders — TTS voice note (free, no Cloud API)
 //  POST /auto/whatsapp/tts { text, voice? } -> mp3 (audio/mpeg) download
-//  Microsoft Edge ki free TTS (msedge-tts) — Hindi neural voice. Internet chahiye.
+//  Pehle Microsoft Edge free TTS (neural, badhiya awaaz). Wo Microsoft ki
+//  taraf se atak jaaye (429 / handshake fail) to Google Translate TTS se
+//  bana deta hai — free, reliable, saaf Hindi. Voice note hamesha ban jaaye.
 //  Staff audio download kar ke WhatsApp chat me khud attach karke bhejta hai.
 // ============================================================
 import { Router } from 'express';
@@ -244,8 +246,8 @@ const VOICES = {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const is429 = (e) => /\b429\b|too many requests/i.test(String(e && e.message || e || ''));
 
-// ek baar audio banao (Microsoft Edge free TTS)
-async function synthOnce(voice, text) {
+// ---- 1) Edge TTS (neural, behtar awaaz). Microsoft kabhi rok deta hai. ----
+async function synthEdge(voice, text) {
   const mod = await import('msedge-tts');
   const MsEdgeTTS = mod.MsEdgeTTS || mod.default?.MsEdgeTTS;
   const OUTPUT_FORMAT = mod.OUTPUT_FORMAT || mod.default?.OUTPUT_FORMAT;
@@ -267,27 +269,65 @@ async function synthOnce(voice, text) {
   return Buffer.concat(chunks);
 }
 
+// ---- 2) Google Translate TTS (free fallback) — 200-char tak chunk, phir jod do ----
+function ttsChunks(text, max = 190) {
+  const words = String(text).replace(/\s+/g, ' ').trim().split(' ');
+  const out = []; let cur = '';
+  for (const w of words) {
+    if ((cur + ' ' + w).trim().length > max) { if (cur) out.push(cur.trim()); cur = w; }
+    else cur = (cur + ' ' + w).trim();
+  }
+  if (cur) out.push(cur.trim());
+  return out.length ? out : [String(text).slice(0, max)];
+}
+async function synthGoogle(text) {
+  const parts = ttsChunks(text);
+  const bufs = [];
+  for (const p of parts) {
+    const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=hi&q=' + encodeURIComponent(p) + '&textlen=' + p.length;
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': 'https://translate.google.com/' } });
+    if (!r.ok) throw new Error('Google TTS ' + r.status);
+    bufs.push(Buffer.from(await r.arrayBuffer()));
+    await sleep(120);                                                   // halka gap — block na kare
+  }
+  const b = Buffer.concat(bufs);
+  if (!b.length) throw new Error('Google TTS khaali aaya');
+  return b;
+}
+
 whatsappApi.post('/auto/whatsapp/tts', async (req, res) => {
   try {
     const text = String(req.body?.text || '').replace(/\*/g, '').trim().slice(0, 900);   // * (WhatsApp bold) bol me nahi
     if (!text) throw new Error('Message khaali hai');
     const voice = VOICES[req.body?.voice] || (req.body?.voice && /neural/i.test(req.body.voice) ? req.body.voice : VOICES.female);
+    const allowGoogle = req.body?.allowGoogle === true;   // default OFF — robotic awaaz tabhi jab user khud bole
 
-    // Microsoft free TTS kabhi 429 (too many requests) deta hai — ruk ke dobara
-    const waits = [0, 1500, 4000, 8000];
-    let buf = null, lastErr = null;
+    let buf = null, used = '', edgeErr = null;
+
+    // Edge TTS (neural) — 429/block pe ruk ke dobara (neural hi primary)
+    const waits = [0, 2000, 5000, 10000];
     for (let i = 0; i < waits.length; i++) {
       if (waits[i]) await sleep(waits[i]);
-      try { buf = await synthOnce(voice, text); if (buf && buf.length) break; lastErr = new Error('Audio khaali aaya'); }
-      catch (e) { lastErr = e; if (!is429(e)) break; log(`[whatsapp] TTS 429 — retry ${i + 1}`); }
+      try { const b = await synthEdge(voice, text); if (b && b.length) { buf = b; used = 'edge'; break; } edgeErr = new Error('Audio khaali aaya'); }
+      catch (e) { edgeErr = e; if (!is429(e)) break; log(`[whatsapp] TTS edge blocked — retry ${i + 1}`); }
     }
+
+    // Edge fail -> sirf tabhi Google jab user ne maanga ho (warna bekaar awaaz na jaaye)
+    if ((!buf || !buf.length) && allowGoogle) {
+      log(`[whatsapp] Edge fail (${edgeErr && edgeErr.message || 'unknown'}) -> Google (user ne maanga)`);
+      try { buf = await synthGoogle(text); used = 'google'; } catch (ge) { edgeErr = new Error((edgeErr && edgeErr.message || 'Edge fail') + ' | Google: ' + ge.message); }
+    }
+
     if (!buf || !buf.length) {
-      if (is429(lastErr)) throw new Error('Microsoft ne abhi rok diya (429 — too many requests). 1-2 minute ruk ke dobara, aur ek saath kai Voice mat dabao.');
-      throw lastErr || new Error('Audio nahi bana');
+      const blocked = is429(edgeErr) || /\b200\b|unexpected server response|websocket/i.test(String(edgeErr && edgeErr.message || ''));
+      if (blocked) throw new Error('Neural awaaz abhi Microsoft ne roki (zyada request). 15-20 minute baad try karo, aur ek saath kai Voice mat dabao. (Majboori ho to niche "Google awaaz" option se chala sakte ho.)');
+      throw new Error('Voice nahi bana: ' + (edgeErr && edgeErr.message || 'unknown'));
     }
-    log(`[whatsapp] TTS ${buf.length} bytes (${voice})`);
+
+    log(`[whatsapp] TTS ${buf.length} bytes (${used}, ${used === 'edge' ? voice : 'google-hi'})`);
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', buf.length);
+    res.setHeader('X-TTS-Source', used);
     res.send(buf);
   } catch (e) {
     res.status(500).json({ error: e.message });

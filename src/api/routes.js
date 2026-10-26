@@ -243,6 +243,29 @@ api.post('/service/paid-vin/sync', h(async (_req, res) => {
   res.json({ ok: true, rows: (r.added || 0) + (r.updated || 0) + (r.replaced || 0), st: r });
 }));
 
+// ---- VIN / gaadi-number se model (Where-to-use confirmation ke liye) ----
+// jo bhi mile — VIN (chassis) ya registration number — usse gaadi ka model.
+// Source: service_jobcards (assetNo=VIN, rcNo=reg), vehicle_sales, fsc_vin, paid_vin.
+api.get('/vehicle/model', h(async (req, res) => {
+  const raw = String(req.query.q || req.query.vin || '').trim();
+  const norm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const Q = norm(raw);
+  if (Q.length < 4) return res.json({ found: false, error: 'VIN ya gaadi number daalo' });
+  const d = db();
+  const rows = [];
+  const grab = (sql, map) => { try { for (const r of d.prepare(sql).all()) { const m = map(r); if (m && (m.vin || m.reg)) rows.push(m); } } catch (e) {} };
+  grab('SELECT assetNo, rcNo, model FROM service_jobcards', (r) => ({ vin: r.assetNo, reg: r.rcNo, model: r.model }));
+  grab('SELECT vin, model FROM vehicle_sales', (r) => ({ vin: r.vin, reg: '', model: r.model }));
+  grab('SELECT asset, model, customer FROM fsc_vin', (r) => ({ vin: r.asset, reg: '', model: r.model, customer: r.customer }));
+  grab('SELECT asset, model, customer FROM paid_vin', (r) => ({ vin: r.asset, reg: '', model: r.model, customer: r.customer }));
+  const pick = (test) => rows.find((r) => test(norm(r.vin), norm(r.reg)));
+  let hit = pick((v, g) => (v && v === Q) || (g && g === Q))                       // exact VIN ya reg
+         || pick((v, g) => (v && Q.length >= 8 && v.endsWith(Q)) || (g && g.endsWith(Q)))   // end match
+         || pick((v, g) => (v && v.includes(Q)) || (g && g.includes(Q)));          // andar kahin
+  if (!hit || !hit.model) return res.json({ found: false, q: raw });
+  res.json({ found: true, q: raw, vin: hit.vin || '', reg: hit.reg || '', model: hit.model, customer: hit.customer || '' });
+}));
+
 api.get('/service/invoices', h(async (req, res) => {
   if (!tableExists('service_invoices')) return res.json({ rows: [], summary: {}, pulledAt: null });
   const rows = rowsOf(req, 'service_invoices', 'invoiceDate', 'invoiceDate DESC, invoiceNo DESC');
