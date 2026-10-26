@@ -903,6 +903,7 @@
         <button class="subtab" data-psub="focus">🎯 Focus Parts</button>
         <button class="subtab" data-psub="guide">🧠 Order Guide</button>
         <button class="subtab" data-psub="orders">📑 Orders (PO)</button>
+        <button class="subtab" data-psub="query">🔎 Gaadi ka part</button>
       </div>
 
       <div class="filters">
@@ -934,6 +935,22 @@
           </table></div>
           <div class="hint"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Stock/MRP/DLC <b>Parts Master</b> se (Stock on Hand). Low = Stock &lt; MOQ. Dead = Master me hai par is range me sale/workshop nahi.</div>
         </div>
+      </div>
+
+      <!-- GAADI KA PART (query — catalog fitment se, stock se matlab nahi) -->
+      <div class="subview" id="psub-query">
+        <div class="empty-note" style="margin-bottom:12px"><span>🔎 VIN daalo → us gaadi ke <b>saare parts</b> (catalog se — stock me ho ya na ho). Phir English keyword (<code>stand</code>, <code>plug</code>, <code>filter</code>) se chhaan lo. Sirf checking ke liye.</span></div>
+        <div class="filters">
+          <div class="fld" style="flex:1;min-width:220px"><label>VIN / gaadi number / model</label><input id="qVin" placeholder="VIN ya gaadi number ya model naam"></div>
+          <div class="fld"><label>&nbsp;</label><button class="btn-sync" id="qLoad"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Laao</button></div>
+          <div class="fld" style="flex:1;min-width:180px"><label>Part dhoondo (english)</label><input id="qPart" placeholder="stand / plug / filter / brake…"></div>
+          <span class="mono" id="qInfo" style="align-self:center;color:var(--muted)"></span>
+        </div>
+        <div class="section-head"><h2>Gaadi ke parts</h2><span class="count" id="q-count">—</span><span class="rule"></span></div>
+        <div class="panel"><div class="tbl-wrap"><table>
+          <thead><tr><th>Part #</th><th>Description</th><th class="num">MRP ₹</th><th>Status</th></tr></thead>
+          <tbody id="qBody"><tr><td colspan="4" style="color:var(--muted-2)">VIN daal ke Laao dabao</td></tr></tbody>
+        </table></div></div>
       </div>
 
       <!-- PURCHASE -->
@@ -2332,6 +2349,43 @@ document.getElementById('ptPurSyncBtn').addEventListener('click',ptSyncPurchase)
 document.getElementById('ptLoad').addEventListener('click',ptLoad);
 document.getElementById('ptSearch').addEventListener('input',renderPtStock);
 document.getElementById('ptFilter').addEventListener('change',renderPtStock);
+/* ---------- GAADI KA PART (query — catalog fitment se) ---------- */
+let QRES=[];
+async function qLoad(){
+  const raw=(document.getElementById('qVin').value||'').trim();
+  const info=document.getElementById('qInfo');
+  if(!raw){info.textContent='VIN ya model daalo';return;}
+  info.textContent='dhoondh rahe…'; QRES=[];
+  try{
+    await loadFitment();
+    // model nikaalo: pehle VIN/reg se (API), na mile to jo type kiya wahi model maan lo
+    let model=raw, via='type kiya';
+    try{const j=await fetch(API_BASE+'/api/vehicle/model?q='+encodeURIComponent(raw)).then(r=>r.json());
+      if(j&&j.found){model=j.model; via='VIN: '+(j.customer||'')+' '+(j.reg||'');}}catch(e){}
+    const MM=FIT.models;
+    const idx=new Set(); MM.forEach((m,i)=>{if(fitModelMatch(model,m))idx.add(i);});
+    if(!idx.size){info.textContent=`"${model}" ka catalog model nahi mila — model naam alag ho sakta hai`; QRES=[]; qRender(); return;}
+    for(const [pn,p] of Object.entries(FIT.parts)){
+      if((p.m||[]).some(i=>idx.has(i))) QRES.push({pn, d:p.d||'', mrp:p.mrp, st:p.st||''});
+    }
+    QRES.sort((a,b)=>(a.d||'').localeCompare(b.d||''));
+    info.textContent=`Gaadi: ${model}  ·  ${QRES.length} parts  (${via.trim()})`;
+    qRender();
+  }catch(e){info.textContent=e.message;}
+}
+function qRender(){
+  const q=(document.getElementById('qPart').value||'').toLowerCase().trim();
+  const words=q.split(/\s+/).filter(Boolean);
+  let l=QRES;
+  if(words.length)l=QRES.filter(r=>{const d=(r.d+' '+r.pn).toLowerCase();return words.every(w=>d.includes(w));});
+  document.getElementById('qBody').innerHTML=l.length?l.slice(0,2000).map(r=>
+    `<tr><td class="mono">${escH(r.pn)}</td><td>${escH(r.d||'—')}</td><td class="num mono">${r.mrp?('₹'+Number(r.mrp).toLocaleString('en-IN')):'—'}</td><td class="mono" style="color:var(--muted-2)">${escH(r.st||'')}</td></tr>`).join('')
+    :`<tr><td colspan="4" style="color:var(--muted-2)">${QRES.length?'Iss keyword ka part nahi':'VIN daal ke Laao dabao'}</td></tr>`;
+  document.getElementById('q-count').textContent=l.length+' parts';
+}
+document.getElementById('qLoad').addEventListener('click',qLoad);
+document.getElementById('qVin').addEventListener('keydown',e=>{if(e.key==='Enter')qLoad();});
+document.getElementById('qPart').addEventListener('input',qRender);
 (function(){const n=new Date(),f=x=>`${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}/${x.getFullYear()}`;document.getElementById('ptFrom').value=f(new Date(n.getFullYear(),n.getMonth(),1));document.getElementById('ptTo').value=f(n);})();
 (async()=>{const m=await ptMaster();if(Object.keys(m).length)ptLoad();})();
 
