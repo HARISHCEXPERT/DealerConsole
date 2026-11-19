@@ -27,6 +27,7 @@
     "express": "^4.19.2",
     "msedge-tts": "^2.1.0",
     "node-cron": "^3.0.3",
+    "pdf-parse": "^1.1.4",
     "pdfjs-dist": "^4.10.38",
     "puppeteer": "^23.0.0",
     "puppeteer-extra": "^3.3.6",

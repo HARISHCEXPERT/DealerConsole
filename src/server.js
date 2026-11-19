@@ -11,7 +11,9 @@ import { api } from './api/routes.js';
 import { pullSaleToFile } from './jobs/pullSale.js';
 import { eveningReport } from './jobs/eveningReport.js';
 import { log, err } from './utils/logger.js';
-import { checkLogin, makeToken, validToken, dropToken, getCookie, requireAuth } from './auth.js';
+import { checkLogin, makeToken, validToken, tokenUser, dropToken, getCookie, requireAuth, requireAdmin } from './auth.js';
+import { listUsers, upsertUser, deleteUser } from './config/creds.js';
+import { extApi } from './api/ext.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // dev: frontend root me (../frontend). release build: server.mjs ke bagal (app/frontend). cwd bhi dekho (.bat app me cd karta hai).
@@ -27,10 +29,11 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 // ---- AUTH ----
 app.post('/auth/login', (req, res) => {
   const { user, pass } = req.body || {};
-  if (checkLogin(user, pass)) {
-    const t = makeToken();
+  const u = checkLogin(user, pass);
+  if (u) {
+    const t = makeToken(u);
     res.setHeader('Set-Cookie', `dc_session=${t}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
-    return res.json({ ok: true });
+    return res.json({ ok: true, role: u.role });
   }
   res.status(401).json({ ok: false, error: 'Galat username ya password' });
 });
@@ -41,6 +44,22 @@ app.post('/auth/logout', (req, res) => {
 });
 app.get('/auth/check', (req, res) => {
   res.json({ ok: validToken(getCookie(req, 'dc_session')) });
+});
+// current user: naam, role, allowed tabs (frontend tab-gating ke liye)
+app.get('/auth/me', (req, res) => {
+  const u = tokenUser(getCookie(req, 'dc_session'));
+  if (!u) return res.status(401).json({ error: 'auth required' });
+  res.json({ user: u.user, role: u.role, tabs: u.tabs });   // tabs '*' = saare (admin)
+});
+// ---- ADMIN: staff users manage (sirf admin) ----
+app.get('/auth/users', requireAdmin, (_req, res) => res.json({ users: listUsers() }));
+app.post('/auth/users', requireAdmin, (req, res) => {
+  try { upsertUser(req.body || {}); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete('/auth/users/:username', requireAdmin, (req, res) => {
+  try { deleteUser(req.params.username); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // License admin panel — sirf tumhare PC pe (.env me ADMIN_PANEL=1). Dealer ke PC pe ye page hota hi nahi.
@@ -65,6 +84,9 @@ app.get('/login', (_req, res) => res.sendFile(path.join(ASSET, 'frontend', 'logi
 const noAppLogin = process.env.DC_NO_APP_LOGIN === '1';
 const authGate = noAppLogin ? (_req, _res, next) => next() : requireAuth;
 if (noAppLogin) log('[auth] app login band — sirf License se (dealer build)');
+
+// Extension bridge (/ext) — localhost pe, bina app-login (CORS). Chrome extension isse baat karta hai.
+app.use('/ext', extApi);
 
 // API protected
 // License: status/activate hamesha khule; baaki /api license ke peeche

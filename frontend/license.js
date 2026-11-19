@@ -99,8 +99,19 @@
     if (window.XLSX) { wrap(window.XLSX, 'writeFile'); wrap(window.XLSX, 'writeFileXLSX'); }
   }
 
+  // per-dealer tab access (signed token se aaya s.tabs) — License Admin se tay. null/khaali = saare tab.
+  function applyTabs(tabs) {
+    const all = !Array.isArray(tabs) || tabs.length === 0;
+    const allow = all ? null : new Set(tabs);
+    document.querySelectorAll('.nav-item[data-view]').forEach((n) => { n.style.display = (all || allow.has(n.dataset.view)) ? '' : 'none'; });
+    const nav = document.getElementById('nav');
+    if (nav) { const kids = [...nav.children]; kids.forEach((el, i) => { if (el.classList.contains('nav-label')) { let any = false; for (let j = i + 1; j < kids.length && !kids[j].classList.contains('nav-label'); j++) { if (kids[j].classList.contains('nav-item') && kids[j].style.display !== 'none') { any = true; break; } } el.style.display = any ? '' : 'none'; } }); }
+    if (!all) { const active = document.querySelector('.nav-item.active'); if (active && active.style.display === 'none') { const vis = [...document.querySelectorAll('.nav-item[data-view]')].find((n) => n.style.display !== 'none'); if (vis) vis.click(); } }
+  }
+
   function apply(s) {
     LIC = s; window.DC_LICENSE = s;
+    try { applyTabs(s.tabs); } catch (e) {}
     // sidebar me dealer ka naam (license wala) + tab ka title
     if (s.name) { const el = document.getElementById('dealerName'); if (el) { el.textContent = s.name; el.title = s.dealer ? 'Dealer code ' + s.dealer : ''; } document.title = 'Dealer Console — ' + s.name; }
     if (LOCKED.includes(s.state)) return lockScreen(s);

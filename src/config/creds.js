@@ -80,3 +80,39 @@ export function saveCreds(key, user, pass) {
 // ---- auto sync setting ----
 export function getSetting(k, def = null) { const r = sdb().prepare('SELECT value FROM settings WHERE key = ?').get(k); return r ? r.value : def; }
 export function setSetting(k, v) { sdb().prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(k, v == null ? null : String(v)); }
+
+// ============================================================
+//  APP USERS (staff) — admin ek-ek banata hai + tab access deta hai. Password HASH (scrypt) me.
+//  Admin khud .env (DC_USER/DC_PASSWORD) se login karta hai — wo yahan nahi hota.
+// ============================================================
+import crypto from 'node:crypto';
+function udb() { const d = sdb(); d.exec(`CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, pass TEXT, role TEXT, tabs TEXT, active INTEGER DEFAULT 1, createdAt TEXT)`); return d; }
+function hashPass(p) { const salt = crypto.randomBytes(16).toString('hex'); return salt + ':' + crypto.scryptSync(String(p), salt, 32).toString('hex'); }
+function checkPass(p, stored) { try { const [salt, h] = String(stored || '').split(':'); if (!salt || !h) return false; const h2 = crypto.scryptSync(String(p), salt, 32).toString('hex'); return crypto.timingSafeEqual(Buffer.from(h, 'hex'), Buffer.from(h2, 'hex')); } catch { return false; } }
+
+export function listUsers() {
+  return udb().prepare('SELECT username, role, tabs, active, createdAt FROM users ORDER BY createdAt').all()
+    .map((u) => ({ username: u.username, role: u.role || 'user', tabs: JSON.parse(u.tabs || '[]'), active: !!u.active, createdAt: u.createdAt }));
+}
+export function upsertUser({ username, pass, role = 'user', tabs = [], active = true }) {
+  username = String(username || '').trim();
+  if (!username) throw new Error('Username chahiye');
+  if (/\s/.test(username)) throw new Error('Username me space nahi');
+  const d = udb(); const ex = d.prepare('SELECT username FROM users WHERE username = ?').get(username);
+  const tj = JSON.stringify(Array.isArray(tabs) ? tabs : []);
+  if (ex) {
+    if (pass) d.prepare('UPDATE users SET pass=?, role=?, tabs=?, active=? WHERE username=?').run(hashPass(pass), role, tj, active ? 1 : 0, username);
+    else d.prepare('UPDATE users SET role=?, tabs=?, active=? WHERE username=?').run(role, tj, active ? 1 : 0, username);
+  } else {
+    if (!pass) throw new Error('Naye user ka password chahiye');
+    d.prepare('INSERT INTO users (username,pass,role,tabs,active,createdAt) VALUES (?,?,?,?,?,?)').run(username, hashPass(pass), role, tj, active ? 1 : 0, new Date().toISOString());
+  }
+  return true;
+}
+export function deleteUser(username) { udb().prepare('DELETE FROM users WHERE username = ?').run(String(username || '').trim()); return true; }
+export function verifyUser(username, pass) {
+  const u = udb().prepare('SELECT * FROM users WHERE username = ?').get(String(username || '').trim());
+  if (!u || !u.active) return null;
+  if (!checkPass(pass, u.pass)) return null;
+  return { user: u.username, role: u.role || 'user', tabs: JSON.parse(u.tabs || '[]') };
+}

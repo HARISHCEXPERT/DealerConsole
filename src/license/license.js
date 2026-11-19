@@ -87,7 +87,7 @@ export function licenseStatus() {
   const pl = verifyToken(getSetting('lic_token'));
   if (!pl) return { state: 'none', support, lastError: getSetting('lic_err') || '' };
   const now = Date.now();
-  const base = { dealer: pl.dealer, name: pl.name, plan: pl.plan, exp: pl.exp, expDate: ymdIST(Date.parse(pl.exp)), support };
+  const base = { dealer: pl.dealer, name: pl.name, plan: pl.plan, exp: pl.exp, expDate: ymdIST(Date.parse(pl.exp)), support, tabs: pl.tabs ?? null };
   const lastIat = Number(getSetting('lic_iat', '0'));
   if (lastIat && now < lastIat - CLOCK_SLACK_MS) return { ...base, state: 'clock', msg: 'Computer ki tareekh/samay galat hai — sahi karke dobara kholo' };
   if (pl.status !== 'active') return { ...base, state: 'suspended', msg: 'License roka gaya hai' };

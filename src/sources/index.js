@@ -201,6 +201,7 @@ const partsPurchase = {
     qty:       { from: 'Actual Received Quantity', type: 'num' },
     rate:      { from: 'Rate', type: 'num' },
     date:      { from: ['Invoice Date', 'GRN Date'], type: 'date' },
+    grnDate:   { from: ['GRN Date', 'GRN Invoice Date', 'Actual GRN Date', 'Received Date'], type: 'date' },  // maal receive hone ki date — stock isi se gina jaata hai
     invoiceNo: 'Invoice Number',
     supplier:  'Supplier Name',
     category:  'Product Category',

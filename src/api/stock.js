@@ -44,11 +44,18 @@ function ensureMeta() {
 export const latestSnap = (kind) => { ensureMeta(); return db().prepare(`SELECT * FROM stock_snapshots WHERE kind=? ORDER BY id DESC LIMIT 1`).get(kind) || null; };
 
 // snapshot ke baad wali entries ka WHERE (alias t, columns date/invoiceNo, src literal)
-export function afterSnap(snap, srcExpr) {
+// dateExpr: kis date se compare karna (default invoice date 't.date'; purchase me GRN date)
+export function afterSnap(snap, srcExpr, dateExpr = 't.date') {
   if (!snap) return { sql: '1=1', params: [] };
-  const base = `(t.date > ? OR (t.date = ? AND (? = 'start' OR (? = 'now' AND NOT EXISTS (SELECT 1 FROM stock_snapshot_excl e WHERE e.snapshot_id = ? AND e.src = ${srcExpr} AND e.invoice_no = IFNULL(t.invoiceNo,''))))))`;
+  const base = `(${dateExpr} > ? OR (${dateExpr} = ? AND (? = 'start' OR (? = 'now' AND NOT EXISTS (SELECT 1 FROM stock_snapshot_excl e WHERE e.snapshot_id = ? AND e.src = ${srcExpr} AND e.invoice_no = IFNULL(t.invoiceNo,''))))))`;
   return { sql: base, params: [snap.as_of, snap.as_of, snap.mode, snap.mode, snap.id] };
 }
+// purchase ki date = GRN (received) date; column na ho (purana DB) to invoice date
+function hasGrn() {
+  try { return db().prepare(`PRAGMA table_info(parts_purchase)`).all().some((c) => c.name === 'grnDate'); }
+  catch { return false; }
+}
+const purchaseDateExpr = (alias = 't.') => hasGrn() ? `COALESCE(NULLIF(${alias}grnDate,''), ${alias}date)` : `${alias}date`;
 
 // ---------------- LIVE PARTS STOCK ----------------
 export function partsLive() {
@@ -63,7 +70,7 @@ export function partsLive() {
   }
   const get = (k, pn, name) => { if (!map.has(k)) map.set(k, { partNo: pn, desc: name || '', opening: 0, inQ: 0, outService: 0, outCounter: 0, mrp: 0, dlc: 0, moq: 0, cat: '', inMaster: false }); return map.get(k); };
   if (snap && hasP) {
-    const w = afterSnap(snap, `'purchase'`);
+    const w = afterSnap(snap, `'purchase'`, purchaseDateExpr());   // GRN (received) date se gino
     for (const r of d.prepare(`SELECT ${PK('t.partNo')} k, MIN(t.partNo) pn, MAX(t.partName) nm, SUM(IFNULL(t.qty,0)) q FROM parts_purchase t WHERE ${w.sql} GROUP BY k`).all(...w.params))
       get(r.k, r.pn, r.nm).inQ += r.q;
   }
@@ -74,31 +81,56 @@ export function partsLive() {
       if (r.s === 'counter') x.outCounter += r.q; else x.outService += r.q;
     }
   }
+  // ---- DMS LIVE STOCK: SOQ (Order Guide) ka "Stock In Hand" — DMS ka apna number, reconstruct nahi ----
+  let soqDate = null;
+  if (tableExists('parts_soq')) {
+    const mx = d.prepare(`SELECT MAX(updateDate) m FROM parts_soq`).get();
+    soqDate = mx && mx.m ? mx.m : null;
+    if (soqDate) {
+      for (const r of d.prepare(`SELECT ${PK('partNo')} k, MIN(partNo) pn, MAX(partDesc) nm, SUM(IFNULL(stock,0)) s, MAX(mrp) mrp, MAX(dlp) dlc, MAX(moq1) moq, MAX(category) cat FROM parts_soq WHERE updateDate = ? GROUP BY k`).all(soqDate)) {
+        const x = map.get(r.k);
+        if (x) { x.soqStock = r.s; x.hasSoq = true; }
+        else map.set(r.k, { partNo: r.pn, desc: r.nm || '', opening: 0, inQ: 0, outService: 0, outCounter: 0, mrp: r.mrp || 0, dlc: r.dlc || 0, moq: r.moq || 0, cat: r.cat || '', inMaster: false, soqStock: r.s, hasSoq: true });
+      }
+    }
+  }
   const round = (n) => Math.round(n * 1000) / 1000;
-  const rows = [...map.values()].map((x) => ({ ...x, stock: round(x.opening + x.inQ - x.outService - x.outCounter) }));
-  return { snapshot: snap ? { ...snap, as_of: toDMY(snap.as_of) } : null, rows };
+  const rows = [...map.values()].map((x) => {
+    const recon = x.opening + x.inQ - x.outService - x.outCounter;
+    const stock = x.hasSoq ? x.soqStock : recon;   // SOQ hai to DMS live; warna reconstruct
+    return { ...x, stock: round(stock), reconStock: round(recon), soqStock: x.hasSoq ? round(x.soqStock) : null, stockSrc: x.hasSoq ? 'dms' : 'recon' };
+  });
+  return { snapshot: snap ? { ...snap, as_of: toDMY(snap.as_of) } : null, soqDate: soqDate ? toDMY(soqDate) : null, rows };
 }
 
-// ek part ka poora hisaab (opening + har entry)
+// ek part ka DIN-WISE hisaab (opening + har din: kitna aaya / gaya / balance)
 function partLedger(partNo) {
   const d = db();
   const snap = latestSnap('parts');
   const k = String(partNo || '').toUpperCase().replace(/[-\s.]/g, '');
   const live = partsLive().rows.find((r) => String(r.partNo).toUpperCase().replace(/[-\s.]/g, '') === k);
-  const out = [];
+  const day = {};   // 'yyyy-mm-dd' -> { in, out, svc, ctr }
+  const touch = (dt) => { const key = String(dt || '').slice(0, 10) || '—'; return day[key] || (day[key] = { in: 0, out: 0, svc: 0, ctr: 0 }); };
   if (tableExists('parts_purchase')) {
-    const w = afterSnap(snap, `'purchase'`);
-    out.push(...d.prepare(`SELECT t.date, t.invoiceNo, 'Purchase' type, t.supplier party, t.qty q FROM parts_purchase t WHERE ${PK('t.partNo')} = ? AND ${w.sql}`).all(k, ...w.params));
+    const w = afterSnap(snap, `'purchase'`, purchaseDateExpr());
+    for (const r of d.prepare(`SELECT ${purchaseDateExpr()} dt, SUM(IFNULL(t.qty,0)) q FROM parts_purchase t WHERE ${PK('t.partNo')} = ? AND ${w.sql} GROUP BY dt`).all(k, ...w.params)) touch(r.dt).in += r.q || 0;
   }
   if (tableExists('parts_sales')) {
     const w = afterSnap(snap, `t.src`);
-    out.push(...d.prepare(`SELECT t.date, t.invoiceNo, CASE t.src WHEN 'counter' THEN 'Counter sale' ELSE 'Workshop' END type, t.customer party, -t.qty q FROM parts_sales t WHERE ${PK('t.partNo')} = ? AND ${w.sql}`).all(k, ...w.params));
+    for (const r of d.prepare(`SELECT t.date dt, t.src s, SUM(IFNULL(t.qty,0)) q FROM parts_sales t WHERE ${PK('t.partNo')} = ? AND ${w.sql} GROUP BY dt, t.src`).all(k, ...w.params)) {
+      const x = touch(r.dt); x.out += r.q || 0; if (r.s === 'counter') x.ctr += r.q || 0; else x.svc += r.q || 0;
+    }
   }
-  out.sort((a, b) => (a.date || '').localeCompare(b.date || '') || String(a.invoiceNo).localeCompare(String(b.invoiceNo)));
+  const r3 = (n) => Math.round(n * 1000) / 1000;
+  const dates = Object.keys(day).filter((x) => x !== '—').sort();
   let bal = live ? live.opening : 0;
-  const rows = [{ date: snap ? toDMY(snap.as_of) : '', invoiceNo: '', type: 'Opening (Master)', party: snap ? `mode: ${snap.mode}` : 'Master nahi', q: bal, bal }];
-  for (const r of out) { bal += r.q || 0; rows.push({ ...r, date: toDMY(r.date), bal: Math.round(bal * 1000) / 1000 }); }
-  return { part: live || { partNo }, rows };
+  const rows = [{ date: snap ? toDMY(snap.as_of) : '—', type: 'Opening (Master)', inQ: '', outQ: '', bal: r3(bal) }];
+  for (const dt of dates) {
+    const x = day[dt]; bal += x.in - x.out;
+    rows.push({ date: toDMY(dt), type: 'din', inQ: x.in ? r3(x.in) : '', outQ: x.out ? r3(x.out) : '', bal: r3(bal) });
+  }
+  const totIn = r3(dates.reduce((s, dt) => s + day[dt].in, 0)), totOut = r3(dates.reduce((s, dt) => s + day[dt].out, 0));
+  return { part: live || { partNo }, rows, totIn, totOut, opening: live ? r3(live.opening) : 0 };
 }
 
 // ---------------- LIVE VEHICLE STOCK ----------------
@@ -202,7 +234,7 @@ stock.post('/master/:kind/commit', (req, res) => {
         .run(kind, nowIso(), asOfIso, mode, n, fileName).lastInsertRowid);
       if (mode === 'now') {   // upload ke waqt us din ki jo entries DB me thi -> master me shamil maano
         const ins = d.prepare(`INSERT OR IGNORE INTO stock_snapshot_excl (snapshot_id, src, invoice_no) VALUES (?,?,?)`);
-        if (tableExists('parts_purchase')) for (const r of d.prepare(`SELECT DISTINCT IFNULL(invoiceNo,'') i FROM parts_purchase WHERE date = ?`).all(asOfIso)) ins.run(snapId, 'purchase', r.i);
+        if (tableExists('parts_purchase')) for (const r of d.prepare(`SELECT DISTINCT IFNULL(invoiceNo,'') i FROM parts_purchase WHERE ${purchaseDateExpr('')} = ?`).all(asOfIso)) ins.run(snapId, 'purchase', r.i);
         if (tableExists('parts_sales')) for (const r of d.prepare(`SELECT DISTINCT src, IFNULL(invoiceNo,'') i FROM parts_sales WHERE date = ?`).all(asOfIso)) ins.run(snapId, r.src, r.i);
       }
       const ir = d.prepare(`INSERT INTO stock_recon (snapshot_id, part_key, part_no, part_desc, system_qty, actual_qty, diff, dlc) VALUES (?,?,?,?,?,?,?,?)`);

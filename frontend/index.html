@@ -933,7 +933,7 @@
             <thead><tr><th>Part #</th><th>Description</th><th>Category</th><th class="num">Opening</th><th class="num">+ Aaya</th><th class="num">− Gaya</th><th class="num">Stock (aaj)</th><th class="num">MOQ</th><th class="num">DLC ₹</th><th class="num">MRP ₹</th><th class="num">Stock×DLC</th></tr></thead>
             <tbody id="ptStockBody" class="clickrows"><tr><td colspan="11" style="color:var(--muted-2)">Parts Master upload karo</td></tr></tbody>
           </table></div>
-          <div class="hint"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Stock/MRP/DLC <b>Parts Master</b> se (Stock on Hand). Low = Stock &lt; MOQ. Dead = Master me hai par is range me sale/workshop nahi.</div>
+          <div class="hint"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Stock = DMS ka asli <b>Stock-on-Hand</b> (Order Guide/SOQ se — DMS jaisa, drift nahi). MRP/DLC Master/SOQ se. Low = Stock &lt; MOQ. +Aaya/−Gaya sirf jaankari (Master ke baad movement).</div>
         </div>
       </div>
 
@@ -1422,6 +1422,7 @@
         <button class="subtab" data-asub="ins">🛡 Insurance</button>
         <button class="subtab" data-asub="rto">🚦 RTO</button>
         <button class="subtab" data-asub="wa">📱 WhatsApp Reminders</button>
+        <button class="subtab" data-asub="helmet">🪖 Helmet Billing</button>
       </div>
 
       <div class="subview" id="asub-wa">
@@ -1598,6 +1599,57 @@
           <thead><tr><th>Kab</th><th>Enquiry #</th><th>Naam</th><th>Mobile</th><th>VIN</th><th>Cash / Finance</th><th class="num">Keemat</th><th class="num">Mila</th><th class="num">Debit note</th><th class="num">Baaki</th><th></th></tr></thead>
           <tbody id="blDraftBody"></tbody>
         </table></div></div>
+      </div>
+
+      <!-- ---------- PARTS BILL: DMS me counter parts bill (Siebel automation) ---------- -->
+      <div class="subview" id="asub-helmet" style="min-height:70vh">
+        <div class="hint" style="margin:0 0 14px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><span>Uttarakhand niyam: har gaadi ke saath <b>2 free helmet</b>. Bikī gaadiyon pe un customer ke naam se helmet ka bill (₹2) katta hai — DMS me khud. Gaadi chuno → <b>Proceed to Helmet Bill</b>. <b>Ek hi login</b> me saare kat jaayenge. Jiska ho chuka wo ✓ Billed (dubara nahi katega).</span></div>
+
+        <!-- ⚙ Settings (ek baar) -->
+        <details id="hbSetBox" style="margin:0 0 14px;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--card)">
+          <summary style="cursor:pointer;font-weight:600;color:var(--fg)">⚙ Helmet Billing Settings <span class="mono" style="color:var(--muted-2);font-size:12px">— ek baar daalo, save ho jaayega</span></summary>
+          <div class="filters" style="margin-top:12px">
+            <div class="fld"><label>DMS User ID (P20)</label><input id="hbUser" placeholder="billing login id" autocomplete="off"></div>
+            <div class="fld"><label>Password</label><input id="hbPass" type="password" placeholder="(saved — badalna ho to likho)" autocomplete="off"></div>
+          </div>
+          <div class="filters">
+            <div class="fld"><label>Helmet Part Number</label><input id="hbPart" placeholder="jaise 99700ZZZ632R00S"></div>
+            <div class="fld" style="max-width:120px"><label>Qty</label><input id="hbQty" type="number" value="2" min="1"></div>
+            <div class="fld" style="max-width:150px"><label>Add. Discount %</label><input id="hbDisc" value="99.9"></div>
+            <div class="fld"><label>&nbsp;</label><button class="btn-sync" id="hbSave">💾 Settings save</button></div>
+          </div>
+          <div id="hbSetMsg" class="mono" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+        </details>
+
+        <!-- filter + search + proceed -->
+        <div class="filters" style="align-items:flex-end">
+          <div class="fld" style="max-width:220px"><label>Dikhao</label>
+            <select id="hbFilter">
+              <option value="pending">Pending (baaki hai)</option>
+              <option value="billed">Billed (ho chuke ✓)</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <div class="fld"><label>Khojo (naam / mobile / VIN / model)</label><input id="hbSearch" placeholder="type karo…"></div>
+          <div class="fld"><label>&nbsp;</label><button class="btn-sync" id="hbReload">↻ Refresh</button></div>
+          <div class="fld"><label>&nbsp;</label><button class="btn-sync" id="hbCsv" title="Jo filter chuna hai usi ka Excel">⬇ Excel</button></div>
+          <div class="fld"><label>&nbsp;</label><button class="btn-sync" id="hbPdf" title="Jo filter chuna hai usi ka PDF (print)">🖨 PDF</button></div>
+          <div class="fld" style="margin-left:auto"><label>&nbsp;</label><button class="btn-sync" id="hbProceed">🪖 Proceed to Helmet Bill (<span id="hbSelN">0</span>)</button></div>
+        </div>
+        <div id="hbCounts" class="mono" style="font-size:12.5px;color:var(--muted);margin:2px 2px 10px"></div>
+
+        <div class="panel" style="overflow:auto;max-height:52vh">
+          <table class="tbl" id="hbTbl" style="width:100%">
+            <thead><tr>
+              <th style="width:34px"><input type="checkbox" id="hbAll" title="sab select"></th>
+              <th>Customer</th><th>Mobile</th><th>Model</th><th>VIN</th><th>Sale Date</th><th>Status</th>
+            </tr></thead>
+            <tbody id="hbRows"><tr><td colspan="7" style="padding:18px;color:var(--muted)">Load ho raha…</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="section-head" style="margin-top:12px"><h2>Chal raha…</h2><span class="rule"></span></div>
+        <div class="panel"><pre id="hbLog" style="margin:0;padding:14px 16px;white-space:pre-wrap;font-family:var(--mono);font-size:12.5px;color:var(--muted);min-height:90px">Gaadi tick karo → "Proceed to Helmet Bill". DMS browser khud ek-ek bill kaatega (ek login me).</pre></div>
       </div>
     </section>
 
@@ -2259,8 +2311,8 @@ document.querySelectorAll('#partsSubtabs .subtab').forEach(t=>{
 const ptNum=s=>Number(String(s??'').replace(/[^\d.-]/g,''))||0;
 async function ptMaster(){ // LIVE stock: server (Master snapshot + baad ki purchase − sale). Server pe master na ho to purana browser master.
   try{const r=await fetch(API_BASE+'/api/stock/parts',{signal:AbortSignal.timeout(20000)});
-    if(r.ok){const j=await r.json();window.PT_SNAP=j.snapshot;
-      if(j.snapshot&&j.rows.length){const m={};j.rows.forEach(x=>{m[x.partNo]=x;});return m;}}
+    if(r.ok){const j=await r.json();window.PT_SNAP=j.snapshot;window.PT_SOQDATE=j.soqDate||null;
+      if((j.snapshot||j.soqDate)&&j.rows.length){const m={};j.rows.forEach(x=>{m[x.partNo]=x;});return m;}}
   }catch(e){}
   window.PT_SNAP=null;
   try{const db=await masterDB();if(!db.objectStoreNames.contains('parts'))return {};
@@ -2340,8 +2392,8 @@ function renderPtStock(){
     return '<tr data-pn="'+escH(x.partNo)+'"><td class="mono" style="white-space:nowrap"><button class="xbtn wtu" data-pn="'+escH(x.partNo)+'" title="Where to use — kis gaadi me lagta hai" style="padding:2px 6px;margin-right:7px">🔧</button>'+x.partNo+'</td><td>'+(x.desc||'—')+(x.inMaster===false?' <span class="pill warn">Master me nahi</span>':'')+'</td><td class="mono">'+(x.cat||'—')+'</td>'+
     '<td class="num mono">'+(x.opening!=null?f3(x.opening):'—')+'</td><td class="num mono" style="color:var(--go)">'+(x.inQ?'+'+f3(x.inQ):'—')+'</td><td class="num mono" style="color:var(--warn)">'+(out?'−'+f3(out):'—')+'</td>'+
     '<td class="num mono strong" style="color:'+(x.stock<=0?"#e0524d":lowF?"var(--warn)":"var(--fg)")+'">'+f3(x.stock)+'</td><td class="num mono">'+(x.moq||'—')+'</td><td class="num mono">₹'+(x.dlc||0).toLocaleString('en-IN')+'</td><td class="num mono">₹'+(x.mrp||0).toLocaleString('en-IN')+'</td><td class="num mono">₹'+Math.round(x.stock*(x.dlc||0)).toLocaleString('en-IN')+'</td></tr>';}).join(''):'<tr><td colspan="11" style="color:var(--muted-2)">Parts Master khaali — Master page se upload karo</td></tr>';
-  const sn=window.PT_SNAP;const info=document.querySelector('#ptSnapInfo span');
-  if(info)info.textContent=sn?`Stock = Master (${sn.as_of}, ${({now:'din ke beech',end:'din band ke baad',start:'din shuru se pehle'})[sn.mode]||sn.mode}) + uske baad ki Purchase − Workshop/Counter sale. Kisi part pe click = uska poora hisaab.`:'Server pe Parts Master nahi — Master page se ek baar upload karo (tab tak browser wala purana master dikh raha hai, bina live update ke).';
+  const sn=window.PT_SNAP,sq=window.PT_SOQDATE;const info=document.querySelector('#ptSnapInfo span');
+  if(info)info.textContent=sq?`Stock = DMS ka asli Stock-on-Hand (Order Guide/SOQ ${sq} se — reconstruct nahi). Fresh rakhne ke liye Order Sync chalao. +Aaya/−Gaya = Master ke baad ki movement (jaankari). Part pe click = din-wise hisaab.`:(sn?`Stock = Master (${sn.as_of}) + baad ki Purchase − sale. Zyada sach ke liye Order Guide (SOQ) sync karo — tab DMS ka asli stock aayega.`:'Server pe stock data nahi — Order Guide (SOQ) sync karo ya Parts Master upload karo.');
   document.getElementById('pt-count').textContent=list.length+' parts';
 }
 document.getElementById('ptSyncBtn').addEventListener('click',ptSyncSales);
@@ -2821,8 +2873,8 @@ document.getElementById('ptStockBody').addEventListener('click',async e=>{
   const pn=tr.dataset.pn;
   const r=await fetch(API_BASE+'/api/stock/parts/ledger?partNo='+encodeURIComponent(pn));const j=await r.json().catch(()=>null);
   if(!j||!j.rows){alert('Hisaab nahi mila');return;}
-  openList({title:'Part '+pn+' — hisaab',subtitle:(j.part.desc||'')+' · Opening Master se, phir har entry · aaj ka stock '+(j.part.stock??'—'),range:pn,
-    columns:[{key:'date',label:'Date'},{key:'type',label:'Type'},{key:'invoiceNo',label:'Invoice #'},{key:'party',label:'Party'},{key:'q',label:'Qty (+/−)',num:true},{key:'bal',label:'Balance',num:true}],rows:j.rows});
+  openList({title:'Part '+pn+' — din-wise hisaab',subtitle:(j.part.desc||'')+` · Opening ${j.opening??'—'} · kul aaya +${j.totIn??0} · kul gaya −${j.totOut??0} · aaj ka stock ${j.part.stock??'—'}`,range:pn,
+    columns:[{key:'date',label:'Date'},{key:'inQ',label:'+ Aaya',num:true},{key:'outQ',label:'− Gaya',num:true},{key:'bal',label:'Balance',num:true}],rows:j.rows});
 });
 document.getElementById('ptReconBtn').addEventListener('click',async()=>{
   const j=await (await fetch(API_BASE+'/api/stock/recon')).json().catch(()=>null);
@@ -3217,6 +3269,55 @@ function dcShowSync(){
 /* ================= ⚙ SYNC SETTINGS (ID/Password alag DB me) + FAIL WALI DOBARA ================= */
 function dcModal(id){let m=document.getElementById(id);if(!m){m=document.createElement('div');m.id=id;m.className='dcm';document.body.appendChild(m);
   m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))m.classList.remove('on');});}return m;}
+/* ---- USERS & ACCESS: logged-in user ke hisaab se tab dikhao (admin=sab) ---- */
+const DC_TABS=[['dashboard','Dashboard'],['sale','Sale'],['service','Service'],['parts','Parts'],['misc','Warranty / FSC'],['khaata','Khaata (Party)'],['sar','SAR (Workshop P&L)'],['auto','Automation'],['master','Master']];
+let DC_ME=null;
+function applyAllowedTabs(){
+  const all=!DC_ME || DC_ME.tabs==='*' || DC_ME.role==='admin';
+  const allow=all?null:new Set(Array.isArray(DC_ME.tabs)?DC_ME.tabs:[]);
+  document.querySelectorAll('.nav-item[data-view]').forEach(n=>{n.style.display=(all||allow.has(n.dataset.view))?'':'none';});
+  const nav=document.getElementById('nav');
+  if(nav){const kids=[...nav.children];kids.forEach((el,i)=>{if(el.classList.contains('nav-label')){let any=false;for(let j=i+1;j<kids.length&&!kids[j].classList.contains('nav-label');j++){if(kids[j].classList.contains('nav-item')&&kids[j].style.display!=='none'){any=true;break;}}el.style.display=any?'':'none';}});}
+  if(!all){const active=document.querySelector('.nav-item.active');if(active&&active.style.display==='none'){const vis=[...document.querySelectorAll('.nav-item[data-view]')].find(n=>n.style.display!=='none');if(vis)vis.click();}}
+}
+async function dcLoadMe(){try{const r=await fetch(API_BASE+'/auth/me');if(r.ok)DC_ME=await r.json();}catch(e){}applyAllowedTabs();}
+/* NOTE: tab-access ab LICENSE se aata hai (license.js me, per-dealer) — isliye /auth/me waala gating load pe nahi chalता. Neeche ke staff functions dead/dormant hain. */
+// admin: staff users list + add/edit/delete + tab access
+async function dcUsersRender(){
+  const box=document.getElementById('dcUsersBox'); if(!box)return;
+  let users=[]; try{const r=await fetch(API_BASE+'/auth/users');const j=await r.json();users=j.users||[];}catch(e){box.textContent='load nahi hua';return;}
+  const tabsBoxes=(sel)=>DC_TABS.map(([v,l])=>`<label style="min-width:135px;font-size:12px"><input type="checkbox" class="utab" value="${v}" ${sel.includes(v)?'checked':''}> ${escH(l)}</label>`).join('');
+  box.innerHTML=`
+    <table style="width:100%;margin-bottom:12px"><thead><tr><th>User</th><th>Role</th><th>Tabs</th><th>On</th><th></th></tr></thead><tbody>
+    ${users.length?users.map(u=>`<tr data-u="${escH(u.username)}"><td><b>${escH(u.username)}</b></td><td>${escH(u.role)}</td>
+      <td class="muted" style="font-size:12px;max-width:300px;white-space:normal">${u.role==='admin'?'<i>sab</i>':escH((u.tabs||[]).map(t=>(DC_TABS.find(x=>x[0]===t)||[])[1]||t).join(', ')||'—')}</td>
+      <td>${u.active?'✓':'✗'}</td>
+      <td style="white-space:nowrap"><button class="btn-sync uedit" style="padding:2px 8px">✎</button> <button class="btn-sync udel" style="padding:2px 8px">🗑</button></td></tr>`).join('')
+      :'<tr><td colspan="5" class="muted">Abhi koi staff user nahi</td></tr>'}
+    </tbody></table>
+    <div class="sec" style="margin-top:4px">➕ User banao / badlo</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="fld"><label>Username</label><input id="nuUser" placeholder="jaise rahul" autocomplete="off"></div>
+      <div class="fld"><label>Password</label><input id="nuPass" type="password" placeholder="(edit me khaali = purana)" autocomplete="new-password"></div>
+      <div class="fld"><label>Role</label><select id="nuRole"><option value="user">User</option><option value="admin">Admin (sab access)</option></select></div>
+      <label style="align-self:center"><input type="checkbox" id="nuActive" checked> Active</label>
+    </div>
+    <div class="muted" style="margin:8px 0 4px">Ye user kaunse tab dekhe:</div>
+    <div id="nuTabs" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px">${tabsBoxes([])}</div>
+    <button class="btn-sync" id="nuSave">💾 Save user</button> <span id="nuMsg" class="muted"></span>`;
+  box.querySelectorAll('.udel').forEach(b=>b.addEventListener('click',async()=>{const u=b.closest('tr').dataset.u;if(!confirm(u+' user ko hata dein?'))return;try{await fetch(API_BASE+'/auth/users/'+encodeURIComponent(u),{method:'DELETE'});}catch(e){}dcUsersRender();}));
+  box.querySelectorAll('.uedit').forEach(b=>b.addEventListener('click',()=>{const u=users.find(x=>x.username===b.closest('tr').dataset.u);if(!u)return;
+    document.getElementById('nuUser').value=u.username;document.getElementById('nuPass').value='';document.getElementById('nuRole').value=u.role;document.getElementById('nuActive').checked=u.active;
+    document.querySelectorAll('#nuTabs .utab').forEach(c=>c.checked=(u.tabs||[]).includes(c.value));document.getElementById('nuMsg').textContent='✎ '+u.username+' (badal ke Save)';}));
+  document.getElementById('nuSave').addEventListener('click',async()=>{
+    const username=document.getElementById('nuUser').value.trim(),pass=document.getElementById('nuPass').value,role=document.getElementById('nuRole').value,active=document.getElementById('nuActive').checked;
+    const tabs=[...document.querySelectorAll('#nuTabs .utab:checked')].map(c=>c.value);const msg=document.getElementById('nuMsg');
+    if(!username){msg.textContent='Username daalo';return;} msg.textContent='Saving…';
+    try{const r=await fetch(API_BASE+'/auth/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,pass,role,tabs,active})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||r.status);dcUsersRender();}
+    catch(e){msg.textContent='✗ '+e.message;}
+  });
+}
+
 async function dcSettings(){
   const m=dcModal('dcSet');m.innerHTML='<div class="box">Load ho raha…</div>';m.classList.add('on');
   let S;try{S=await (await fetch(API_BASE+'/api/settings/sync')).json();}catch(e){m.innerHTML='<div class="box">Load nahi hua</div>';return;}
@@ -3236,6 +3337,8 @@ async function dcSettings(){
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><label><input type="checkbox" id="dcAutoOn" ${A.on?'checked':''}> Roz apne aap Quick Sync</label>
       <label>Samay ke baad: <input type="time" id="dcAutoAt" value="${escH(A.at||'09:00')}"></label><button class="btn-sync" id="dcAutoSave">Save</button>
       <span class="muted">${A.lastDate?'Aakhri auto sync: '+A.lastDate.split('-').reverse().join('/'):'Abhi tak auto sync nahi chala'} · din me ek baar; PC us waqt band ho to jab khule tab. Fail ho to apne aap dobara nahi.</span></div>
+    <div class="sec">🚪 Login</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="muted">Dealer ka tab-access License se tay hota hai (License Admin se badlo).</span><button class="btn-sync" id="dcLogout">Logout</button></div>
   </div>`;
   m.querySelectorAll('.cs').forEach(b=>b.addEventListener('click',async()=>{const tr=b.closest('tr'),msg=tr.querySelector('.cm');
     const user=tr.querySelector('.cu').value.trim(),pass=tr.querySelector('.cp').value;if(!user){msg.innerHTML='<span class="err">ID daalo</span>';return;}
@@ -3248,6 +3351,7 @@ async function dcSettings(){
   document.getElementById('dcAutoSave').addEventListener('click',async e=>{const b=e.target;b.disabled=true;
     try{await fetch(API_BASE+'/api/settings/auto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({on:document.getElementById('dcAutoOn').checked,at:document.getElementById('dcAutoAt').value})});b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}
     finally{b.disabled=false;}});
+  document.getElementById('dcLogout')?.addEventListener('click',async()=>{try{await fetch(API_BASE+'/auth/logout',{method:'POST'});}catch(e){}location.href='/login';});
 }
 async function dcFix(){
   await dcStatus();
@@ -4137,11 +4241,120 @@ document.querySelector('#partsSubtabs .subtab[data-psub="focus"]').addEventListe
     const r=D.rows.find(x=>x.partNo===s.dataset.pn);if(r){if(s.value==='auto'){await load();return;}r.fpg=s.value||null;r.how='haath';}render();});
 })();
 
+/* ================= AUTOMATION → HELMET BILLING (DMS Siebel) ================= */
+let HB={rows:[],inited:false};
+async function hbInit(){
+  if(!HB.inited){ hbBind(); HB.inited=true; await hbLoadSettings(); }
+  hbLoadVehicles();
+}
+function hbBind(){
+  document.getElementById('hbSave').addEventListener('click',hbSaveSettings);
+  document.getElementById('hbReload').addEventListener('click',hbLoadVehicles);
+  document.getElementById('hbFilter').addEventListener('change',hbLoadVehicles);
+  let t; document.getElementById('hbSearch').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(hbLoadVehicles,350);});
+  document.getElementById('hbAll').addEventListener('change',e=>{document.querySelectorAll('#hbRows input.hbChk:not(:disabled)').forEach(c=>c.checked=e.target.checked);hbCount();});
+  document.getElementById('hbProceed').addEventListener('click',hbProceed);
+  document.getElementById('hbCsv').addEventListener('click',hbExportCSV);
+  document.getElementById('hbPdf').addEventListener('click',hbExportPDF);
+}
+// export rows (current filter ke hisaab se loaded HB.rows)
+function hbExportRows(){
+  return (HB.rows||[]).map(v=>({
+    Customer:v.customer||'', Mobile:v.phone||'', Model:v.model||'', VIN:v.vin||'',
+    'Sale Date':v.date||'', Status:v.billed?'Billed':'Pending',
+    'Invoice No':v.helmetInvoiceNo||'', 'Billed On':v.billedAt?new Date(v.billedAt).toLocaleDateString('en-IN'):''
+  }));
+}
+function hbExportCSV(){
+  const rows=hbExportRows(); if(!rows.length){alert('List khaali hai');return;}
+  const cols=Object.keys(rows[0]);
+  const q=s=>{s=String(s==null?'':s); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const csv=[cols.join(','),...rows.map(r=>cols.map(c=>q(r[c])).join(','))].join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='helmet-billing-'+document.getElementById('hbFilter').value+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function hbExportPDF(){
+  const rows=hbExportRows(); if(!rows.length){alert('List khaali hai');return;}
+  const cols=Object.keys(rows[0]); const filter=document.getElementById('hbFilter').value;
+  const w=window.open('','_blank'); if(!w){alert('Popup block ho gaya — allow karo');return;}
+  const th=cols.map(c=>'<th>'+escH(c)+'</th>').join('');
+  const tr=rows.map(r=>'<tr>'+cols.map(c=>'<td>'+escH(r[c])+'</td>').join('')+'</tr>').join('');
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Helmet Billing Record</title>'
+   +'<style>body{font-family:Arial,sans-serif;padding:18px;color:#111}h2{margin:0 0 2px}.sub{color:#555;font-size:12px;margin-bottom:12px}'
+   +'table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #999;padding:6px 8px;text-align:left}th{background:#eee}</style></head><body>'
+   +'<h2>Helmet Billing Record — '+escH(filter.charAt(0).toUpperCase()+filter.slice(1))+'</h2>'
+   +'<div class="sub">'+rows.length+' records · '+new Date().toLocaleString('en-IN')+'</div>'
+   +'<table><thead><tr>'+th+'</tr></thead><tbody>'+tr+'</tbody></table>'
+   +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},200);}</scr'+'ipt></body></html>');
+  w.document.close();
+}
+async function hbLoadSettings(){
+  try{const r=await fetch(API_BASE+'/api/auto/helmet/settings');const j=await r.json();
+    document.getElementById('hbUser').value=j.user||'';
+    document.getElementById('hbPart').value=j.partNo||'';
+    document.getElementById('hbQty').value=j.qty||2;
+    document.getElementById('hbDisc').value=j.disc||'99.9';
+    if(j.hasPass)document.getElementById('hbPass').placeholder='•••••• (saved)';
+    if(!j.partNo)document.getElementById('hbSetBox').open=true;   // part nahi -> settings khol do
+  }catch(e){}
+}
+async function hbSaveSettings(){
+  const b={user:document.getElementById('hbUser').value||'',partNo:document.getElementById('hbPart').value||'',qty:document.getElementById('hbQty').value||2,disc:document.getElementById('hbDisc').value||'99.9'};
+  const pw=document.getElementById('hbPass').value; if(pw)b.pass=pw;
+  const m=document.getElementById('hbSetMsg'); m.textContent='Saving…';
+  try{const r=await fetch(API_BASE+'/api/auto/helmet/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+    if(r.ok){m.textContent='✓ Saved';document.getElementById('hbPass').value='';}else{m.textContent='✗ save nahi hua';}}catch(e){m.textContent='✗ '+e.message;}
+}
+async function hbLoadVehicles(){
+  const filter=document.getElementById('hbFilter').value, q=document.getElementById('hbSearch').value||'';
+  const tb=document.getElementById('hbRows'); tb.innerHTML='<tr><td colspan="7" style="padding:18px;color:var(--muted)">Load ho raha…</td></tr>';
+  try{
+    const r=await fetch(API_BASE+'/api/auto/helmet/vehicles?filter='+encodeURIComponent(filter)+'&q='+encodeURIComponent(q));
+    const j=await r.json(); HB.rows=j.rows||[];
+    const c=j.counts||{}; document.getElementById('hbCounts').textContent='Pending: '+(c.pending||0)+'   ·   Billed: '+(c.billed||0)+'   ·   Total: '+(c.all||0);
+    if(!HB.rows.length){tb.innerHTML='<tr><td colspan="7" style="padding:18px;color:var(--muted)">Koi gaadi nahi.</td></tr>';hbCount();return;}
+    tb.innerHTML=HB.rows.map(v=>{
+      const dis=v.billed?'disabled':'';
+      const st=v.billed?('<span class="pill go">✓ Billed'+(v.helmetInvoiceNo?' · Inv '+escH(v.helmetInvoiceNo):'')+(v.billedAt?' · '+new Date(v.billedAt).toLocaleDateString('en-IN'):'')+'</span>'):'<span class="pill warn">Pending</span>';
+      return '<tr>'+
+        '<td><input type="checkbox" class="hbChk" data-vin="'+escH(v.vin)+'" '+dis+'></td>'+
+        '<td>'+escH(v.customer||'—')+'</td><td class="mono">'+escH(v.phone||'')+'</td>'+
+        '<td>'+escH(v.model||'')+'</td><td class="mono" style="font-size:11.5px">'+escH(v.vin||'')+'</td>'+
+        '<td>'+escH(v.date||'')+'</td><td>'+st+'</td></tr>';
+    }).join('');
+    document.querySelectorAll('#hbRows input.hbChk').forEach(c=>c.addEventListener('change',hbCount));
+    document.getElementById('hbAll').checked=false; hbCount();
+  }catch(e){tb.innerHTML='<tr><td colspan="7" style="padding:18px;color:#c00">✗ '+escH(e.message)+'</td></tr>';}
+}
+function hbSelected(){return [...document.querySelectorAll('#hbRows input.hbChk:checked')].map(c=>c.dataset.vin);}
+function hbCount(){const el=document.getElementById('hbSelN'); if(el)el.textContent=hbSelected().length;}
+// EK request me saare bill -> EK login (re-login nahi). Live wahi DMS browser me dikhta hai (visible).
+async function hbProceed(){
+  const vins=hbSelected(); if(!vins.length){alert('Pehle gaadi tick karo');return;}
+  if(!confirm(vins.length+' gaadi ka helmet bill DMS me kaate? (ek login, saare ek saath)'))return;
+  const btn=document.getElementById('hbProceed'),o=btn.innerHTML; btn.style.pointerEvents='none'; btn.innerHTML='Chal raha…';
+  const logEl=document.getElementById('hbLog');
+  // naye batch se pehle purana DMS browser band -> fresh session
+  logEl.textContent='Purana session band kar ke fresh login… phir '+vins.length+' bill (DMS browser me live dekho)';
+  try{ await fetch(API_BASE+'/api/auto/helmet/reset',{method:'POST'}); }catch(e){}
+  try{
+    const r=await fetch(API_BASE+'/api/auto/helmet/bill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vins})});
+    const j=await r.json().catch(()=>({}));
+    const lines=(j.logs||[]).join('\n');
+    const summ=(j.results||[]).map(x=>(x.ok?'✓':(x.skip?'⊘':'✗'))+' '+x.vin+(x.ok&&x.invoiceNo?(' → Invoice '+x.invoiceNo):'')+(x.error?(' — '+x.error):(x.skip?(' — '+x.skip):''))).join('\n');
+    if(!r.ok){logEl.textContent=(lines?lines+'\n\n':'')+'❌ '+(j.error||('HTTP '+r.status))+(summ?'\n\n'+summ:'');}
+    else{logEl.textContent=lines+'\n\n──────────\n✅ '+(j.done||0)+'/'+(j.total||vins.length)+' bill ho gaye\n'+summ;}
+    hbLoadVehicles();
+  }catch(e){logEl.textContent='❌ '+e.message;}
+  finally{btn.style.pointerEvents=''; btn.innerHTML=o;}
+}
 /* ================= AUTOMATION → BILLING ================= */
 document.querySelectorAll('#autoSubtabs .subtab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('#autoSubtabs .subtab').forEach(x=>x.classList.toggle('active',x===t));
   document.querySelectorAll('#view-auto .subview').forEach(v=>v.classList.remove('active'));document.getElementById('asub-'+t.dataset.asub).classList.add('active');
-  if(t.dataset.asub==='bill')blInit();if(t.dataset.asub==='wa')waInit();}));
+  if(t.dataset.asub==='bill')blInit();if(t.dataset.asub==='wa')waInit();if(t.dataset.asub==='helmet')hbInit();}));
 
 /* ================= AUTOMATION → WHATSAPP REMINDERS (click-to-send) ================= */
 let WA={mode:'fsc',fsc:[],paid:[],lost:[],custom:[],postsvc:[],loaded:false,lostLoaded:false,postLoaded:false,logLatest:{},logRow:null,logPick:''};

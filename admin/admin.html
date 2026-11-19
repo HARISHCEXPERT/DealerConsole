@@ -34,6 +34,9 @@ td small{color:var(--mute);display:block}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;z-index:9}
 .ov .card{max-width:560px;width:100%}.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 .quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tabpick{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:6px}
+.tabpick label{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:#111;margin:0;width:auto}
+.tabpick input{width:auto}
 @media(max-width:600px){.grid{grid-template-columns:1fr}}
 .hide{display:none!important}
 </style>
@@ -53,6 +56,8 @@ const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return nu
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
 let sb = null, DEALERS = [], TAB = 'dealers';
+// App ke sidebar tab (data-view se match) — dealer ko ye tick karo to wahi dikhenge. Kuch bhi ticked nahi = SAARE.
+const TABS = [['dashboard', 'Dashboard'], ['sale', 'Sale'], ['service', 'Service'], ['parts', 'Parts'], ['misc', 'Warranty / FSC'], ['khaata', 'Khaata (Party)'], ['sar', 'SAR (Workshop P&L)'], ['auto', 'Automation'], ['master', 'Master']];
 
 // ---------- password hash (Edge Function isi tarah check karta hai) ----------
 const b64 = (u) => btoa(String.fromCharCode(...u));
@@ -112,6 +117,11 @@ function statePill(d) {
   if (n <= 7) return `<span class="pill p-warn">${n} din bache</span>`;
   return `<span class="pill p-ok">${n} din bache</span>`;
 }
+function tabsLabel(d) {
+  let t = []; try { t = d.tabs ? JSON.parse(d.tabs) : []; } catch { t = []; }
+  if (!Array.isArray(t) || !t.length) return '<span class="pill p-ok">Saare</span>';
+  return esc(t.map((v) => (TABS.find((x) => x[0] === v) || [])[1] || v).join(', '));
+}
 async function mainView() {
   $('#app').innerHTML = `<div class="stats" id="stats"></div>
     <div class="tabs"><button data-t="dealers">Dealers</button><button data-t="log">Log</button></div>
@@ -135,7 +145,7 @@ function render() {
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === TAB));
   if (TAB === 'log') return renderLog();
   $('#body').innerHTML = `<div class="bar"><input id="q" placeholder="Code / naam / city / ID se dhundo"><span style="flex:1"></span><button class="btn" id="addBtn">+ Naya dealer</button></div>
-    <div class="tw"><table><thead><tr><th>Dealer</th><th>License ID</th><th>Plan</th><th>Kab tak</th><th>Haal</th><th>PC</th><th>Aakhri baar online</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>`;
+    <div class="tw"><table><thead><tr><th>Dealer</th><th>License ID</th><th>Plan</th><th>Tabs (access)</th><th>Kab tak</th><th>Haal</th><th>PC</th><th>Aakhri baar online</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>`;
   $('#addBtn').onclick = () => editDealer(null);
   $('#q').oninput = drawRows; drawRows();
 }
@@ -144,7 +154,9 @@ function drawRows() {
   const list = DEALERS.filter((d) => !q || [d.dealer_code, d.name, d.city, d.login_id, d.phone].join(' ').toLowerCase().includes(q));
   $('#rows').innerHTML = list.map((d) => `<tr>
     <td><b>${esc(d.name)}</b><small>${esc(d.dealer_code)}${d.city ? ' · ' + esc(d.city) : ''}${d.phone ? ' · ' + esc(d.phone) : ''}</small></td>
-    <td>${esc(d.login_id)}</td><td>${esc(d.plan)}</td><td>${dmy(d.expires_at)}</td><td>${statePill(d)}</td>
+    <td>${esc(d.login_id)}</td><td>${esc(d.plan)}</td>
+    <td style="white-space:normal;max-width:220px">${tabsLabel(d)}</td>
+    <td>${dmy(d.expires_at)}</td><td>${statePill(d)}</td>
     <td>${d.device_id ? esc(d.device_name || 'bandha') + `<small>${dmy(d.device_bound_at)} se</small>` : '<span class="pill p-mute">koi bhi pehla PC</span>'}</td>
     <td>${ago(d.last_seen)}<small>${d.app_version ? 'v' + esc(d.app_version) : ''}</small></td>
     <td><div class="acts">
@@ -153,7 +165,7 @@ function drawRows() {
       <button class="btn sm sec" data-a="edit" data-id="${d.id}">Badlo</button>
       <button class="btn sm sec" data-a="toggle" data-id="${d.id}">${d.status === 'active' ? 'Roko' : 'Chalu karo'}</button>
       ${d.device_id ? `<button class="btn sm sec" data-a="reset" data-id="${d.id}">PC reset</button>` : ''}
-    </div></td></tr>`).join('') || '<tr><td colspan="8" style="color:var(--mute)">Koi dealer nahi</td></tr>';
+    </div></td></tr>`).join('') || '<tr><td colspan="9" style="color:var(--mute)">Koi dealer nahi</td></tr>';
   $('#rows').onclick = onAct;
 }
 async function upd(id, patch, okMsg) {
@@ -181,6 +193,7 @@ async function onAct(e) {
 function editDealer(d) {
   const isNew = !d;
   const exp = d ? new Date(d.expires_at) : new Date(Date.now() + 15 * DAY);
+  let selTabs = []; try { selTabs = d?.tabs ? JSON.parse(d.tabs) : []; } catch { selTabs = []; }
   const ov = document.createElement('div'); ov.className = 'ov';
   ov.innerHTML = `<div class="card"><h3 style="margin-top:0">${isNew ? 'Naya dealer' : 'Badlo — ' + esc(d.name)}</h3>
     <div class="grid">
@@ -194,6 +207,10 @@ function editDealer(d) {
       <div><label>Kab tak chalega</label><input id="fExp" type="date" value="${exp.toISOString().slice(0, 10)}">
         <div class="quick">${[[15, '15 din'], [30, '1 mahina'], [90, '3 mahine'], [365, '1 saal']].map(([n, l]) => `<button class="btn sm sec" type="button" data-n="${n}">${l}</button>`).join('')}</div></div>
     </div>
+    <label>App tabs (tick = dealer ko dikhega · kuch bhi ticked nahi = SAARE tab)</label>
+    <div class="tabpick" id="fTabs">${TABS.map(([v, l]) => `<label><input type="checkbox" class="ftab" value="${v}" ${selTabs.includes(v) ? 'checked' : ''}> ${esc(l)}</label>`).join('')}
+      <button class="btn sm sec" type="button" id="fTabAll" style="margin-left:4px">Saare</button>
+      <button class="btn sm sec" type="button" id="fTabNone">Koi nahi</button></div>
     <label>Notes</label><textarea id="fNotes" rows="2">${esc(d?.notes || '')}</textarea>
     <div class="err" id="fErr"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn sec" id="fX">Band</button><button class="btn" id="fSave">Save</button></div></div>`;
@@ -201,11 +218,15 @@ function editDealer(d) {
   $('#fX', ov).onclick = () => ov.remove();
   $('#fGen', ov).onclick = () => { $('#fPass', ov).value = genPass(); };
   $('.quick', ov).onclick = (e) => { const n = e.target.dataset.n; if (n) $('#fExp', ov).value = new Date(Date.now() + n * DAY).toISOString().slice(0, 10); };
+  $('#fTabAll', ov).onclick = () => ov.querySelectorAll('.ftab').forEach((c) => (c.checked = true));
+  $('#fTabNone', ov).onclick = () => ov.querySelectorAll('.ftab').forEach((c) => (c.checked = false));
   $('#fSave', ov).onclick = async () => {
     const v = (id) => $(id, ov).value.trim();
     const row = { dealer_code: v('#fCode'), name: v('#fName'), city: v('#fCity') || null, phone: v('#fPhone') || null,
       login_id: v('#fLogin').toLowerCase(), plan: v('#fPlan'), notes: v('#fNotes') || null,
       expires_at: new Date(v('#fExp') + 'T23:59:59+05:30').toISOString() };
+    const picked = [...ov.querySelectorAll('.ftab:checked')].map((c) => c.value);
+    row.tabs = picked.length ? JSON.stringify(picked) : null;     // khaali = saare tab
     const pass = v('#fPass');
     if (!row.dealer_code || !row.name || !row.login_id || !v('#fExp')) return ($('#fErr', ov).textContent = '* wale bharo');
     if (isNew && !pass) return ($('#fErr', ov).textContent = 'Password chahiye');
@@ -215,7 +236,7 @@ function editDealer(d) {
     const { error } = isNew ? await sb.from('dealers').insert(row) : await sb.from('dealers').update(row).eq('id', d.id);
     if (error) { $('#fErr', ov).textContent = /duplicate/i.test(error.message) ? 'Ye dealer code ya License ID pehle se hai' : error.message; $('#fSave', ov).disabled = false; return; }
     ov.remove(); await loadDealers(); drawRows();
-    if (pass) showCreds(row, pass); else toast('Save ho gaya');
+    if (pass) showCreds(row, pass); else toast('Save ho gaya — dealer ke app me 6 ghante me (ya restart pe) tab badlenge');
   };
 }
 function showCreds(row, pass) {

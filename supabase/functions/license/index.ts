@@ -1,12 +1,13 @@
 // ============================================================
 //  DEALER CONSOLE — LICENSE Edge Function
-//  Supabase dashboard → Edge Functions → Create function → naam: license → ye poora paste → Deploy
-//  Secrets (Edge Functions → Secrets): LICENSE_PRIVATE_KEY = (npm run license-keygen ka PRIVATE wala)
+//  Supabase dashboard → Edge Functions → license → ye poora paste → Deploy
+//  Secrets: LICENSE_PRIVATE_KEY = (npm run license-keygen ka PRIVATE wala)
 //
 //  POST { action:'activate', login, password, deviceId, deviceName, version }
 //  POST { action:'refresh',  token, deviceId, version }
 //  -> { ok:true, token }   token = base64url(payload).base64url(Ed25519 signature)
-//     payload = { dealer, name, plan, exp (ISO), dev, iat (server ISO), status }
+//     payload = { dealer, name, plan, exp (ISO), dev, iat (server ISO), status, tabs }
+//     tabs = dealer ko kaunse app-tab dikhein (JSON array). null/khaali = SAARE tab.
 // ============================================================
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -46,7 +47,10 @@ const log = (dealer_code: string | null, action: string, detail: string, device_
   db.from("license_log").insert({ dealer_code, action, detail, device_id: device_id || null }).then(() => {}, () => {});
 
 async function issue(d: Record<string, any>, deviceId: string) {
-  return sign({ dealer: d.dealer_code, name: d.name, plan: d.plan, exp: new Date(d.expires_at).toISOString(), dev: deviceId, iat: new Date().toISOString(), status: d.status });
+  // tabs: DB me JSON string (ya null). Token me array (ya null) jaata hai. null/khaali = saare tab.
+  let tabs: string[] | null = null;
+  try { if (d.tabs) { const t = typeof d.tabs === "string" ? JSON.parse(d.tabs) : d.tabs; if (Array.isArray(t) && t.length) tabs = t; } } catch { tabs = null; }
+  return sign({ dealer: d.dealer_code, name: d.name, plan: d.plan, exp: new Date(d.expires_at).toISOString(), dev: deviceId, iat: new Date().toISOString(), status: d.status, tabs });
 }
 
 Deno.serve(async (req) => {
